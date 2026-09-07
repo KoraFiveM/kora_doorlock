@@ -147,7 +147,7 @@ local function managementDefinition(snapshot, closestFirst, asUpdate)
                                 { key = 'autoLock', label = 'Auto-lock' },
                             },
                             rows = rows,
-                            empty = { title = 'No doors configured', description = 'Add a door to qbdoorlock/config.lua and restart this resource.', icon = 'DoorClosed' },
+                            empty = 'No doors configured. Add a door to qbdoorlock/config.lua and restart this resource.',
                         },
                     },
                 },
