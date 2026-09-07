@@ -45,3 +45,12 @@ local locked = exports.qbdoorlock:getDoorState('city-hall-office')
 ```
 
 The player presses the rebindable **E** interaction while standing at the door.
+
+## Staff dashboard
+
+`/doorlocks` opens a qblib AppShell dashboard with the current state of every
+configured door. It shows each door's current distance, and supports searching,
+sorting by closest to the player, refreshing live state, and locking or
+unlocking a door. Every request and change is checked server-side and requires
+the `qbcore.admin` permission. Change the command name with
+`Config.AdminCommand`.

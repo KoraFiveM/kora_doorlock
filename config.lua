@@ -29,3 +29,8 @@ Config.Doors = {
 Config.InteractionDistance = 1.8
 Config.DefaultAutoLock = nil
 Config.Debug = false
+
+-- Opens the AppShell management dashboard. This is restricted to players with
+-- the qbcore.admin ACE permission; it is intentionally separate from normal
+-- door access rules so staff can recover or manage any configured door.
+Config.AdminCommand = 'doorlocks'

@@ -1,7 +1,31 @@
 local states = {}
 
+local function isAdmin(source)
+    local ok, allowed = pcall(function()
+        return exports.qbcore:hasPermission(source, 'admin')
+    end)
+    return ok and allowed == true
+end
+
 local function leaves(door)
     return door.doors or { { model = door.model, coords = door.coords } }
+end
+
+local function managementSnapshot(source)
+    if not isAdmin(source) then return nil, 'You do not have permission to manage door locks.' end
+
+    local result = {}
+    for id, door in pairs(Config.Doors) do
+        result[#result + 1] = {
+            id = id,
+            label = door.label,
+            locked = states[id] == true,
+            leaves = #(leaves(door)),
+            autoLock = door.autoLock or Config.DefaultAutoLock,
+        }
+    end
+    table.sort(result, function(a, b) return a.label:lower() < b.label:lower() end)
+    return result
 end
 
 local function getDoor(id)
@@ -90,6 +114,20 @@ RegisterNetEvent('qbdoorlock:server:toggle', function(id)
         if type(delay) == 'number' and delay > 0 then scheduleAutoLock(id, delay) end
     end
 end)
+
+QB.callback.register('qbdoorlock:managementSnapshot', function(source)
+    return managementSnapshot(source)
+end, { rateLimit = { max = 10, window = 10000 } })
+
+QB.callback.register('qbdoorlock:managementSetState', function(source, id, locked)
+    if not isAdmin(source) then return nil, 'You do not have permission to manage door locks.' end
+    if type(id) ~= 'string' or type(locked) ~= 'boolean' or not getDoor(id) then
+        return nil, 'That door is no longer configured.'
+    end
+
+    setState(id, locked)
+    return managementSnapshot(source)
+end, { rateLimit = { max = 20, window = 10000 } })
 
 -- Useful for other server resources (alarms, heists, admin tooling). This is
 -- deliberately server-only: clients cannot set a door state by calling it.
