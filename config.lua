@@ -34,6 +34,7 @@ Config.Debug = false
 -- the qbcore.admin ACE permission; it is intentionally separate from normal
 -- door access rules so staff can recover or manage any configured door.
 Config.AdminCommand = 'doorlocks'
+Config.CreateCommand = 'adddoor'
 
 -- Registers this resource-owned configuration with qblib without changing its public Config table.
 if QB and QB.config and QB.config.adopt then Config = QB.config.adopt(Config) end

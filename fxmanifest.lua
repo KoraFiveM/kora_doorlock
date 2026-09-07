@@ -10,10 +10,12 @@ version '1.0.0'
 dependencies {
     'qblib',
     'qbcore',
+    'qbsql',
 }
 
 shared_scripts {
     '@qblib/init.lua',
+    '@qbsql/init.lua',
     'config.lua',
 }
 
@@ -23,4 +25,9 @@ client_scripts {
 
 server_scripts {
     'server/main.lua',
+}
+
+files {
+    'sql/001_doors.sql',
+    'sql/002_links.sql',
 }

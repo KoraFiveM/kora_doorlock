@@ -6,8 +6,21 @@ gangs, character IDs, key items, and optional auto-locking.
 
 ## Install
 
-`qbdoorlock` is already added after `qbcore` in `server.cfg`. Add doors in
-`config.lua`, then restart the resource (or the server).
+`qbdoorlock` is already added after `qbcore` in `server.cfg`.
+
+## In-game creation
+
+Players with the `qbcore.admin` permission can create a persistent single-door
+lock without editing files:
+
+1. Stand within six metres and look directly at the map door.
+2. Run `/adddoor` (or the configured `Config.CreateCommand`).
+3. Give it a permanent ID, a name, starting state, and optional job/gang access.
+
+The door is saved in the database, immediately synchronized to every player,
+and restored after resource or server restarts. `/doorlocks` also includes a
+**Create targeted door** shortcut; it closes the dashboard so you can aim at the
+door, then use `/adddoor`.
 
 ## Door configuration
 
@@ -51,6 +64,8 @@ The player presses the rebindable **E** interaction while standing at the door.
 `/doorlocks` opens a qblib AppShell dashboard with the current state of every
 configured door. It shows each door's current distance, and supports searching,
 sorting by closest to the player, refreshing live state, and locking or
-unlocking a door. Every request and change is checked server-side and requires
-the `qbcore.admin` permission. Change the command name with
-`Config.AdminCommand`.
+unlocking a door. Use **Link double door** on a card to select any other
+unlinked door; the pair then locks and unlocks together, and can be unlinked
+from either card. Links persist across restarts. Every request and change is
+checked server-side and requires the `qbcore.admin` permission. Change the
+command name with `Config.AdminCommand`.
