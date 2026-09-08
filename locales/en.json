@@ -1,0 +1,23 @@
+{
+  "title": "Door lock",
+  "lock_door": "Lock %{door}",
+  "unlock_door": "Unlock %{door}",
+  "pick_lock": "Pick lock",
+  "select_second": "Aim at the second door",
+  "different_door": "Aim at a different map door.",
+  "cannot_pick": "That door cannot be picked.",
+  "lock_resisted": "The lock resisted your attempt.",
+  "lockpick_broke": "Your lockpick broke.",
+  "access_denied": "You do not have access to this door.",
+  "locked": "Door locked.",
+  "unlocked": "Door unlocked.",
+  "look_at_door": "Look directly at an unlocked map door within 6 metres, then try again.",
+  "double_cancelled": "Double-door selection cancelled.",
+  "door_saved": "Door created and saved.",
+  "definitions_failed": "Door definitions could not be loaded.",
+  "manage_help": "Open door lock management",
+  "create_help": "Create a targeted door lock",
+  "import_help": "Import doors from an ox_doorlock database table",
+  "imported": "Imported %{count} ox_doorlock door(s).",
+  "import_failed": "Door import failed: %{error}"
+}

@@ -5,7 +5,7 @@ lua54 'yes'
 name 'qbdoorlock'
 author 'qbcore2'
 description 'Config-driven, server-authoritative door locks built with qblib'
-version '1.0.0'
+version '2.0.0'
 
 dependencies {
     'qblib',
@@ -16,7 +16,9 @@ dependencies {
 shared_scripts {
     '@qblib/init.lua',
     '@qbsql/init.lua',
+    'types.lua',
     'config.lua',
+    'shared/schema.lua',
 }
 
 client_scripts {
@@ -28,6 +30,7 @@ server_scripts {
 }
 
 files {
+    'locales/*.json',
     'sql/001_doors.sql',
     'sql/002_links.sql',
 }
