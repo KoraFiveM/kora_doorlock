@@ -60,6 +60,7 @@ QB = {
     sql = {
         ready = function() return true end,
         migrate = function() return true end,
+        migrateFiles = function() return true end,
         scalar = function() return 1 end,
         query = function(statement)
             if statement:find('FROM `ox_doorlock`', 1, true) then return { { id = 42, name = 'Imported', data = 'ox-row' } } end

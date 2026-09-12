@@ -8,12 +8,6 @@ local function translate(key, replacements)
     return QB.lang(key, replacements)
 end
 
-local function checksum(value)
-    local hash = 2166136261
-    for index = 1, #value do hash = ((hash ~ value:byte(index)) * 16777619) & 0xFFFFFFFF end
-    return ('%08x'):format(hash)
-end
-
 local function isAdmin(source)
     return QB.permissions.hasPermission(source, Config.AdminPermission or 'admin', Config.AdminPermissionPrefix or 'qbcore')
 end
@@ -619,11 +613,9 @@ CreateThread(function()
         initializationComplete = true
         return print('^1[qbdoorlock]^7 qbsql was not ready; persistent door management is disabled.')
     end
-    local doorsSql = assert(LoadResourceFile(RESOURCE, 'sql/001_doors.sql'), 'missing qbdoorlock door migration')
-    local linksSql = assert(LoadResourceFile(RESOURCE, 'sql/002_links.sql'), 'missing qbdoorlock link migration')
-    local _, migrationErr = QB.sql.migrate(RESOURCE, {
-        { version = 1, name = 'doors', sql = doorsSql, checksum = checksum(doorsSql) },
-        { version = 2, name = 'links', sql = linksSql, checksum = checksum(linksSql) },
+    local _, migrationErr = QB.sql.migrateFiles(RESOURCE, {
+        { version = 1, name = 'doors', file = 'sql/001_doors.sql' },
+        { version = 2, name = 'links', file = 'sql/002_links.sql' },
     })
     if migrationErr then initializationComplete = true; return print(('^1[qbdoorlock]^7 migration failed: %s'):format(migrationErr)) end
     local rows, queryErr = QB.sql.query('SELECT `id`, `definition` FROM `qbdoorlock_doors`')
