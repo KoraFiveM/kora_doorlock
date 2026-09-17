@@ -60,4 +60,15 @@ Config.CreateCommand = 'adddoor'
 Config.ImportCommand = 'importoxdoors'
 
 -- Registers this resource-owned configuration with qblib without changing its public Config table.
-if QB and QB.config and QB.config.adopt then Config = QB.config.adopt(Config) end
+if QB and QB.config and QB.config.adopt then
+    Config.Doors = QB.config.map(Config.Doors, QB.config.object({}), {
+        label = 'Authored doors',
+        description = 'Defines permanent door IDs and their authored access, model, coordinate, lock, sound, and optional auto-lock settings. Each row key is the stable door ID and each value is a JSON object. In-game database edits override these defaults; verify model hashes and coordinates before restarting qbdoorlock.',
+    })
+    Config.DefaultAutoLock = QB.config.optional(Config.DefaultAutoLock,
+        QB.config.integer(0, { min = 0 }), {
+            label = 'Default automatic lock delay',
+            description = 'Optionally sets the default number of milliseconds an unlocked door waits before locking itself. Leave this unset to disable automatic locking unless an individual door supplies its own autoLock value.',
+        })
+    Config = QB.config.adopt(Config)
+end
