@@ -4,6 +4,7 @@ local targetModels, pendingTargetModels = {}, {}
 local nearbyDoor, prompt, pickingLock, lockpickTarget
 local managementSnapshotData, managementClosestFirst = nil, false
 local selection, toggleBinding, selectBinding, cancelBinding
+local spriteDicts = {}
 
 local function translate(key, replacements)
     return QB.lang(key, replacements)
@@ -525,11 +526,18 @@ cancelBinding = QB.keybind.add({
 CreateThread(function()
     local spriteConfig = Config.DrawSprite
     if spriteConfig then
-        for _, sprite in pairs(spriteConfig) do if sprite.dict then QB.stream.loadTextureDict(sprite.dict) end end
+        for _, sprite in pairs(spriteConfig) do
+            if sprite.dict and QB.stream.loadTextureDict(sprite.dict) then spriteDicts[sprite.dict] = true end
+        end
     end
     local definitions, serverStates = QB.callback.trigger('qbdoorlock:server:doorsRequested')
     if type(definitions) ~= 'table' then return notify(translate('definitions_failed'), 'error') end
     for id, definition in pairs(definitions) do setupDoor(id, definition, type(serverStates) == 'table' and serverStates[id] == true) end
+end)
+
+AddEventHandler('onClientResourceStop', function(resource)
+    if resource ~= GetCurrentResourceName() then return end
+    for dictionary in pairs(spriteDicts) do SetStreamedTextureDictAsNoLongerNeeded(dictionary) end
 end)
 
 CreateThread(function()
