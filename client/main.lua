@@ -596,7 +596,11 @@ AddEventHandler('onClientResourceStart', function(resourceName) if resourceName 
 
 ---@param id string
 ---@return boolean? locked
-exports('getDoorState', function(id) return doors[id] and doors[id].locked or nil end)
+exports('getDoorState', function(id)
+    local door = doors[id]
+    if not door then return nil end
+    return door.locked
+end)
 
 ---@return string? id
 exports('getClosestDoorId', function() return nearbyDoor end)
