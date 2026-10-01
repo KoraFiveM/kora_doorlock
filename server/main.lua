@@ -423,6 +423,7 @@ QB.events.register('qbdoorlock:server:doorToggled', function(source, id)
         QB.notify.send(source, { title = translate('title'), message = translate('access_denied'), type = 'error' })
         return
     end
+    if getDoor(id) ~= door or not isNearDoor(source, door) then return end
     local locked = not states[id]
     setDoorState(id, locked, source, requirement and requirement.name)
     if requirement and requirement.remove then removeItem(source, requirement, slot) end

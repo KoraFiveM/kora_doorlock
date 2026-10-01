@@ -76,7 +76,7 @@ function TriggerEvent(name, ...) localEvents[#localEvents + 1] = { name = name, 
 function CreateThread(callback) callback() end
 function Wait() end
 
-dofile('server/main.lua')
+dofile(arg[1] or 'server/main.lua')
 
 Harness.test('public doors toggle through the authenticated qblib handler', function()
     Harness.equal(exported.getDoorState('public'), true)
@@ -114,6 +114,48 @@ Harness.test('lockpicking requires and consumes a qblib proof', function()
     Harness.equal(authorization, 'authorization')
     eventHandlers['qbdoorlock:server:lockpickFinished'](1, 'pickable', authorization, 'proof')
     Harness.equal(exported.getDoorState('pickable'), false)
+end)
+
+Harness.test('passcode completion requires the player to remain near the door', function()
+    exported.setDoorState('coded', true)
+    local near, notifications = true, {}
+    QB.distance.player = function() return near end
+    QB.notify.send = function(_, options) notifications[#notifications + 1] = options end
+    QB.callback.trigger = function(_, name)
+        Harness.equal(name, 'qbdoorlock:client:passcodeRequested')
+        return coroutine.yield('passcode prompt')
+    end
+
+    local function request()
+        local pending = coroutine.create(function() return eventHandlers['qbdoorlock:server:doorToggled'](1, 'coded') end)
+        local ok, phase = coroutine.resume(pending)
+        Harness.equal(ok, true)
+        Harness.equal(phase, 'passcode prompt')
+        return pending
+    end
+
+    local pending, pushCount = request(), #pushed
+    near = false
+    Harness.equal(coroutine.resume(pending, '1234'), true)
+    Harness.equal(coroutine.status(pending), 'dead')
+    Harness.equal(exported.getDoorState('coded'), true)
+    Harness.equal(#pushed, pushCount)
+    Harness.equal(#notifications, 0)
+
+    near = true
+    pending = request()
+    Harness.equal(coroutine.resume(pending), true)
+    Harness.equal(exported.getDoorState('coded'), true)
+    Harness.equal(#notifications, 1)
+    Harness.equal(notifications[1].message, 'access_denied')
+
+    pending = request()
+    local result = table.pack(coroutine.resume(pending, '1234'))
+    Harness.equal(result[1], true)
+    Harness.equal(result.n, 1)
+    Harness.equal(coroutine.status(pending), 'dead')
+    Harness.equal(exported.getDoorState('coded'), false)
+    Harness.equal(#pushed, pushCount + 1)
 end)
 
 if Harness.failures > 0 then os.exit(1) end
