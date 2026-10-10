@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS `qbdoorlock_doors` (
+    `id` VARCHAR(64) NOT NULL,
+    `definition` LONGTEXT NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
