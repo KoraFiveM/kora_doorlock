@@ -209,6 +209,14 @@ function DoorlockSchema.normalize(raw, fallbackDistance)
     else
         result.locked = true
     end
+    -- A category only organises doors in the creator: it never affects who can open one.
+    local category = raw.category
+    if category ~= nil then
+        category = trimmed(category, 48)
+        if not category or not category:match('^[a-z0-9][a-z0-9-]*$') then return nil, 'Door category is not a valid category ID.' end
+    end
+    result.category = category
+
     result.distance = distance
     result.groups, result.characters, result.items = groups, characters, items
     result.passcode, result.autoLock = passcode, autoLock and math.floor(autoLock) or nil
@@ -221,6 +229,25 @@ function DoorlockSchema.normalize(raw, fallbackDistance)
     result.lockSoundSet = trimmed(raw.lockSoundSet, 96)
     result.unlockSoundSet = trimmed(raw.unlockSoundSet, 96)
     return result
+end
+
+-- The settings a category gives every new door: a normal definition without a name, a place or a category.
+-- It goes through the same checks as a door, by borrowing a throwaway leaf.
+---@param raw table
+---@param fallbackDistance? number
+---@return table? defaults
+---@return string? error
+function DoorlockSchema.normalizeTemplate(raw, fallbackDistance)
+    if type(raw) ~= 'table' then return nil, 'Category defaults must be a table.' end
+    local probe = {}
+    for key, value in pairs(raw) do probe[key] = value end
+    probe.doors, probe.heading, probe.category = nil, nil, nil
+    probe.label, probe.model, probe.coords = 'template', 1, { x = 0.0, y = 0.0, z = 0.0 }
+
+    local defaults, err = DoorlockSchema.normalize(probe, fallbackDistance)
+    if not defaults then return nil, err end
+    defaults.label, defaults.model, defaults.coords, defaults.heading, defaults.doors, defaults.category = nil, nil, nil, nil, nil, nil
+    return defaults
 end
 
 function DoorlockSchema.copyCoords(coords)

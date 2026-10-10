@@ -26,6 +26,7 @@
 ---@field doorRate? number
 ---@field holdOpen? boolean
 ---@field hideUi? boolean
+---@field category? string ID of the creator category the door was made in (organisation only).
 ---@field lockpick? boolean
 ---@field lockpickDifficulty? table|string
 ---@field lockSound? string
