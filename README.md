@@ -56,6 +56,10 @@ page opens when you are done.
 - Linking it with another door so they lock and unlock together
 - *Duplicate door* (copies the settings, then you aim at the new door) and *Delete door*
 
+Passcodes are never shown after they are set. The creator only shows whether one
+is set: leave the field empty to keep it, type a new code to replace it, or use
+*Remove passcode* to clear it. This also applies to category defaults.
+
 Every change is checked and saved by the server, and the creator shows what it
 refused. Doors created or edited in-game are persistent. Editing a door authored in
 `Config.Doors` creates a database override; deleting one creates a persistent

@@ -112,7 +112,7 @@ local function accessList(definition)
     if definition.groups then access[#access + 1] = 'groups' end
     if definition.characters then access[#access + 1] = 'characters' end
     if definition.items then access[#access + 1] = 'items' end
-    if definition.passcode then access[#access + 1] = 'passcode' end
+    if definition.hasPasscode then access[#access + 1] = 'passcode' end
     return access
 end
 
@@ -282,11 +282,11 @@ end
 local function accessBlocks(door)
     local definition, prefix = door.definition, prefixOf(door)
     local groups, characters, items = groupCards(definition, prefix), characterCards(definition, prefix), itemCards(definition, prefix)
-    return {
+    local blocks = {
         {
             type = 'form', id = blockId('door-passcode', door.blockKey or door.id), title = 'Access',
-            fields = { { id = 'passcode', label = 'Passcode', type = 'password', maxLength = 128, default = definition.passcode,
-                description = 'Anyone who enters it can use the door. Any one way in is enough: a group, a character, a key item, or this passcode. With none of them the door is public. Leave empty for no passcode.' } },
+            fields = { { id = 'passcode', label = 'Passcode', type = 'password', maxLength = 128, default = '',
+                description = definition.hasPasscode and 'A passcode is set. Type a new one to replace it, or leave empty to keep it.' or 'No passcode set.' } },
             action = { id = prefix .. 'passcode', label = 'Save' },
         },
         {
@@ -317,6 +317,13 @@ local function accessBlocks(door)
             empty = 'No item opens this door.',
         },
     }
+    if definition.hasPasscode then
+        table.insert(blocks, 2, {
+            type = 'actions',
+            actions = { { id = prefix .. 'passcode:clear', label = 'Remove passcode', icon = 'Trash2', variant = 'destructive' } },
+        })
+    end
+    return blocks
 end
 
 local function lockpickForm(door)
@@ -482,7 +489,7 @@ local function defaultsText(defaults)
         for _, name in ipairs(names) do groups[#groups + 1] = ('%s %d'):format(name, defaults.groups[name]) end
         parts[#parts + 1] = table.concat(groups, ', ')
     end
-    if defaults.passcode then parts[#parts + 1] = 'passcode' end
+    if defaults.hasPasscode then parts[#parts + 1] = 'passcode' end
     if defaults.items then parts[#parts + 1] = 'key items' end
     if defaults.characters then parts[#parts + 1] = 'characters' end
     if defaults.lockpick then parts[#parts + 1] = 'lockpickable' end
@@ -575,10 +582,6 @@ local function categoryView()
     local nextId = nextCategoryId(category)
     local blocks = {
         {
-            type = 'actions',
-            actions = { { id = 'cat:place', label = 'Place doors', icon = 'ScanSearch', variant = 'primary' } },
-        },
-        {
             type = 'list', id = 'category-doors', layout = 'cards', columns = 3,
             title = ('Doors in %s (%d)'):format(category.label, #rows), items = rows,
             searchable = true, searchPlaceholder = 'Search these doors…', pageSize = 12,
@@ -604,6 +607,10 @@ local function categoryView()
     for _, block in ipairs(accessBlocks(target)) do blocks[#blocks + 1] = block end
     blocks[#blocks + 1] = lockpickForm(target)
     blocks[#blocks + 1] = soundsForm(target)
+    blocks[#blocks + 1] = {
+        type = 'actions',
+        actions = { { id = 'cat:place', label = 'Place doors', icon = 'ScanSearch', variant = 'primary' } },
+    }
     blocks[#blocks + 1] = {
         type = 'actions', title = 'Danger zone',
         actions = { { id = 'cat:delete', label = 'Delete category', variant = 'destructive' } },
@@ -871,7 +878,7 @@ local function runTool(tool)
     definition.label = tool.name
     applyGeometry(definition, geometry)
 
-    local result, err = QB.callback.trigger('qbdoorlock:server:managementDoorCreated', definition)
+    local result, err = QB.callback.trigger('qbdoorlock:server:managementDoorCreated', definition, tool.sourceDoorId)
     if not result then return toast(err or NO_ANSWER) end
 
     setData(result.doors)
@@ -1023,6 +1030,10 @@ local function doorAction(actionId, values, target)
         return edit(door, function(definition) definition.passcode = optionalText(values.passcode) end)
     end
 
+    if actionId == 'door:passcode:clear' then
+        return edit(door, function(definition) definition.clearPasscode = true end, 'Passcode removed.')
+    end
+
     if actionId:match('^door:group:') then return groupAction(door, actionId) end
     if actionId:match('^door:character:') then return characterAction(door, actionId) end
     if actionId:match('^door:item:') then return itemAction(door, actionId) end
@@ -1060,7 +1071,7 @@ local function doorAction(actionId, values, target)
     if actionId == 'door:duplicate' then
         local new = askNewDoor('Duplicate door', door.label .. ' copy', door.leaves == 2)
         if not new then return refresh() end
-        pendingTool = { kind = 'create', name = new.name, double = new.double, template = door.definition }
+        pendingTool = { kind = 'create', name = new.name, double = new.double, template = door.definition, sourceDoorId = door.id }
         return { close = true }
     end
 
@@ -1137,7 +1148,7 @@ end
 
 -- Only the actions that edit settings are shared with a category's defaults.
 local DEFAULTS_ACTIONS = {
-    '^door:details$', '^door:passcode$', '^door:group:', '^door:character:', '^door:item:', '^door:lockpick$', '^door:sounds$',
+    '^door:details$', '^door:passcode$', '^door:passcode:clear$', '^door:group:', '^door:character:', '^door:item:', '^door:lockpick$', '^door:sounds$',
 }
 
 local function defaultsAction(actionId, values)

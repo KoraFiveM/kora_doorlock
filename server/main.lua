@@ -277,7 +277,7 @@ local function managementSnapshot(source)
     if not isAdmin(source) then return nil, 'You do not have permission to manage door locks.' end
     local result = {}
     for id, door in pairs(doors) do
-        local definition = DoorlockSchema.forNetwork(door)
+        local definition = clientDefinition(door)
         definition.locked = states[id] == true
         result[#result + 1] = {
             id = id, label = door.label, locked = states[id] == true, leaves = #doorLeaves(door),
@@ -287,7 +287,14 @@ local function managementSnapshot(source)
     table.sort(result, function(a, b) return a.label:lower() < b.label:lower() end)
 
     local list = {}
-    for id, category in pairs(categories) do list[#list + 1] = { id = id, label = category.label, defaults = category.defaults } end
+    for id, category in pairs(categories) do
+        local defaults = {}
+        for key, value in pairs(category.defaults) do
+            if key ~= 'passcode' then defaults[key] = value end
+        end
+        defaults.hasPasscode = category.defaults.passcode ~= nil
+        list[#list + 1] = { id = id, label = category.label, defaults = defaults }
+    end
     table.sort(list, function(a, b) return a.label:lower() < b.label:lower() end)
     return { doors = result, categories = list }
 end
@@ -373,13 +380,24 @@ local function uniqueDoorId(label)
     return id
 end
 
-local function saveManagedDoor(source, id, raw, creating)
+local function saveManagedDoor(source, id, raw, creating, sourceDoorId)
     if not isAdmin(source) then return nil, 'You do not have permission to save door locks.' end
     if not databaseReady then return nil, 'Door storage is still starting.' end
     if creating and doors[id] then return nil, 'That door ID is already in use.' end
     if not creating and not doors[id] then return nil, 'That door is no longer configured.' end
+    local previous = not creating and doors[id] or nil
+    if creating and sourceDoorId ~= nil then
+        previous = getDoor(sourceDoorId)
+        if not previous then return nil, 'The source door is no longer configured.' end
+    end
     local door, err = DoorlockSchema.normalize(raw, Config.InteractionDistance)
     if not door then return nil, err end
+    -- Creator snapshots hide passcodes, so an omitted value must keep the stored code.
+    if raw.clearPasscode == true then
+        door.passcode = nil
+    elseif raw.passcode == nil and previous then
+        door.passcode = previous.passcode
+    end
     if door.category and categoriesReady and not categories[door.category] then door.category = nil end
     if creating and not validateCreationDistance(source, door) then return nil, 'All selected doors must be within 12 metres of you.' end
     local saved, saveErr = persistDoor(id, door)
@@ -402,10 +420,10 @@ QB.callback.register('qbdoorlock:server:managementDoorSaved', function(source, r
 end, { rateLimit = { max = 15, window = 10000 } })
 
 -- Creates a door from its name alone and answers with the new ID, so the creator can open it straight away.
-QB.callback.register('qbdoorlock:server:managementDoorCreated', function(source, raw)
+QB.callback.register('qbdoorlock:server:managementDoorCreated', function(source, raw, sourceDoorId)
     if type(raw) ~= 'table' then return nil, 'Door definition must be a table.' end
     local id = uniqueDoorId(raw.label)
-    local snapshot, err = saveManagedDoor(source, id, raw, true)
+    local snapshot, err = saveManagedDoor(source, id, raw, true, sourceDoorId)
     if not snapshot then return logRefusal(source, 'creating ' .. id, err) end
     return { doors = snapshot, id = id }
 end, { rateLimit = { max = 8, window = 10000 } })
@@ -528,6 +546,11 @@ QB.callback.register('qbdoorlock:server:managementCategoryDefaultsSaved', functi
 
     local defaults, err = DoorlockSchema.normalizeTemplate(raw, Config.InteractionDistance)
     if not defaults then return nil, err end
+    if raw.clearPasscode == true then
+        defaults.passcode = nil
+    elseif raw.passcode == nil then
+        defaults.passcode = category.defaults.passcode
+    end
 
     local updated = { id = id, label = category.label, defaults = defaults }
     local saved, saveErr = persistCategory(updated)
