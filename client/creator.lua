@@ -1,12 +1,17 @@
 -- The door lock creator. It works like the qbcrafting creator: a grid of doors,
 -- a Create new door button, and one page per door with its own forms and cards.
+-- Categories are optional: a category (a building, say) holds default settings for new doors and places
+-- doors in bulk as category-1, category-2 ... Each door keeps its own copy, so it can still be changed alone.
 -- The door runtime lives in client/main.lua and is reached through DoorlockClient.
 
 local APP_ID = 'qbdoorlock:creator'
 local TITLE = 'Door Lock Creator'
+local NO_ANSWER = 'The server did not answer. Restart qbdoorlock so its client and server scripts match, then check the server console.'
 
 local doors = {}          -- the server snapshot, sorted by name
+local categories = {}     -- { id, label, defaults }, sorted by name
 local selectedDoor = nil  -- id
+local selectedCategory = nil -- id
 local currentView = 'doors'
 local closestFirst = false
 local pendingTool = nil   -- aim at a door after the creator closes
@@ -70,6 +75,34 @@ local function doorEntry(id)
     end
 end
 
+local function categoryEntry(id)
+    for _, category in ipairs(categories) do
+        if category.id == id then return category end
+    end
+end
+
+-- The id the next door placed in a category will get: one above the highest category-N that exists.
+local function nextCategoryId(category)
+    local prefix, highest = category.id .. '-', 0
+    for _, door in ipairs(doors) do
+        if door.id:sub(1, #prefix) == prefix then
+            local number = door.id:sub(#prefix + 1)
+            if number:match('^%d+$') then highest = math.max(highest, tonumber(number)) end
+        end
+    end
+    return ('%s%d'):format(prefix, highest + 1), highest + 1
+end
+
+-- The forms and cards that edit "a door" also edit a category's defaults. The defaults are shown as a stand-in
+-- door; its action ids start with cd: instead of door: so the two can never be mixed up.
+local function categoryTarget(category)
+    return { id = category.id, blockKey = 'cat-' .. category.id, label = category.label, definition = category.defaults, isCategory = true, locked = false, leaves = 1 }
+end
+
+local function prefixOf(door)
+    return door.isCategory and 'cd:' or 'door:'
+end
+
 local function leavesOf(definition)
     return definition.doors or { { model = definition.model, coords = definition.coords, heading = definition.heading } }
 end
@@ -98,6 +131,13 @@ local function metadataText(metadata)
     return #parts > 0 and table.concat(parts, ', ') or nil
 end
 
+-- The state line of a door, with its category when it has one.
+local function doorSummary(door)
+    local category = door.definition.category and categoryEntry(door.definition.category)
+    if category then return ('%s · %s'):format(stateText(door), category.label) end
+    return stateText(door)
+end
+
 local function distanceTo(door, position)
     return DoorlockClient.distanceTo(door.id, position)
 end
@@ -116,12 +156,13 @@ local function doorsView()
         rows[#rows + 1] = {
             id = door.id,
             label = door.label,
-            description = stateText(door),
+            description = doorSummary(door),
             icon = door.leaves == 2 and 'DoorOpen' or 'DoorClosed',
             tone = door.locked and 'warning' or 'success',
             distance = distance,
             metadata = {
                 { label = 'ID', value = door.id },
+                { label = 'Category', value = (door.definition.category and categoryEntry(door.definition.category) or { label = 'None' }).label },
                 { label = 'Distance', value = distance < math.huge and ('%.1f m'):format(distance) or 'Unknown' },
                 { label = 'Auto-lock', value = door.autoLock and door.autoLock > 0 and ('%d sec'):format(math.floor(door.autoLock / 1000)) or 'Off' },
                 { label = 'Linked door', value = door.linkedTo and (linkedLabels[door.linkedTo] or door.linkedTo) or 'None' },
@@ -166,11 +207,12 @@ local function doorsView()
 end
 
 local function detailsForm(door)
-    local definition = door.definition
-    return {
-        type = 'form', id = blockId('door-details', door.id), title = 'Details',
-        fields = {
-            { id = 'label', label = 'Door name', type = 'text', required = true, maxLength = 96, default = definition.label },
+    local definition, prefix = door.definition, prefixOf(door)
+    local fields = {}
+    if not door.isCategory then
+        fields[#fields + 1] = { id = 'label', label = 'Door name', type = 'text', required = true, maxLength = 96, default = definition.label }
+    end
+    local shared = {
             { id = 'distance', label = 'Interaction distance', type = 'number', min = 0.5, max = 20, default = definition.distance or Config.InteractionDistance,
                 description = 'How close a player must be to use the door, in metres.' },
             { id = 'autoLock', label = 'Auto-lock seconds', type = 'number', min = 0, max = 86400,
@@ -181,12 +223,18 @@ local function detailsForm(door)
             { id = 'automatic', label = 'Automatic or sliding door', type = 'checkbox', default = definition.automatic == true },
             { id = 'holdOpen', label = 'Hold open while unlocked', type = 'checkbox', default = definition.holdOpen == true },
             { id = 'hideUi', label = 'Hide the interaction indicator', type = 'checkbox', default = definition.hideUi == true },
-        },
-        action = { id = 'door:details', label = 'Save' },
+    }
+    for _, field in ipairs(shared) do fields[#fields + 1] = field end
+
+    return {
+        type = 'form', id = blockId(door.isCategory and 'category-details' or 'door-details', door.blockKey or door.id),
+        title = door.isCategory and 'Details for new doors' or 'Details',
+        fields = fields,
+        action = { id = prefix .. 'details', label = 'Save' },
     }
 end
 
-local function groupCards(definition)
+local function groupCards(definition, prefix)
     local cards = {}
     for _, name in ipairs(sortedKeys(definition.groups)) do
         local grade = definition.groups[name]
@@ -194,26 +242,26 @@ local function groupCards(definition)
             id = name, label = name, icon = 'Users',
             description = grade > 0 and ('Grade %d or higher'):format(grade) or 'Any grade',
             actions = {
-                { id = 'door:group:edit:' .. name, label = 'Edit', icon = 'Pencil', variant = 'primary' },
-                { id = 'door:group:remove:' .. name, label = 'Remove', icon = 'Trash2', variant = 'destructive' },
+                { id = prefix .. 'group:edit:' .. name, label = 'Edit', icon = 'Pencil', variant = 'primary' },
+                { id = prefix .. 'group:remove:' .. name, label = 'Remove', icon = 'Trash2', variant = 'destructive' },
             },
         }
     end
     return cards
 end
 
-local function characterCards(definition)
+local function characterCards(definition, prefix)
     local cards = {}
     for _, character in ipairs(definition.characters or {}) do
         cards[#cards + 1] = {
             id = character, label = character, icon = 'User', description = 'Character ID',
-            actions = { { id = 'door:character:remove:' .. character, label = 'Remove', icon = 'Trash2', variant = 'destructive' } },
+            actions = { { id = prefix .. 'character:remove:' .. character, label = 'Remove', icon = 'Trash2', variant = 'destructive' } },
         }
     end
     return cards
 end
 
-local function itemCards(definition)
+local function itemCards(definition, prefix)
     local cards = {}
     for index, item in ipairs(definition.items or {}) do
         local metadata = {}
@@ -223,8 +271,8 @@ local function itemCards(definition)
         cards[#cards + 1] = {
             id = tostring(index), label = item.name, icon = 'KeyRound', description = 'Key item', metadata = metadata,
             actions = {
-                { id = 'door:item:edit:' .. index, label = 'Edit', icon = 'Pencil', variant = 'primary' },
-                { id = 'door:item:remove:' .. index, label = 'Remove', icon = 'Trash2', variant = 'destructive' },
+                { id = prefix .. 'item:edit:' .. index, label = 'Edit', icon = 'Pencil', variant = 'primary' },
+                { id = prefix .. 'item:remove:' .. index, label = 'Remove', icon = 'Trash2', variant = 'destructive' },
             },
         }
     end
@@ -232,18 +280,18 @@ local function itemCards(definition)
 end
 
 local function accessBlocks(door)
-    local definition = door.definition
-    local groups, characters, items = groupCards(definition), characterCards(definition), itemCards(definition)
+    local definition, prefix = door.definition, prefixOf(door)
+    local groups, characters, items = groupCards(definition, prefix), characterCards(definition, prefix), itemCards(definition, prefix)
     return {
         {
-            type = 'form', id = blockId('door-passcode', door.id), title = 'Access',
+            type = 'form', id = blockId('door-passcode', door.blockKey or door.id), title = 'Access',
             fields = { { id = 'passcode', label = 'Passcode', type = 'password', maxLength = 128, default = definition.passcode,
                 description = 'Anyone who enters it can use the door. Any one way in is enough: a group, a character, a key item, or this passcode. With none of them the door is public. Leave empty for no passcode.' } },
-            action = { id = 'door:passcode', label = 'Save' },
+            action = { id = prefix .. 'passcode', label = 'Save' },
         },
         {
             type = 'actions',
-            actions = { { id = 'door:group:add', label = 'Add job or gang', icon = 'Plus', variant = 'primary' } },
+            actions = { { id = prefix .. 'group:add', label = 'Add job or gang', icon = 'Plus', variant = 'primary' } },
         },
         {
             type = 'list', id = 'door-groups', layout = 'cards', columns = 3,
@@ -252,7 +300,7 @@ local function accessBlocks(door)
         },
         {
             type = 'actions',
-            actions = { { id = 'door:character:add', label = 'Add character', icon = 'Plus', variant = 'primary' } },
+            actions = { { id = prefix .. 'character:add', label = 'Add character', icon = 'Plus', variant = 'primary' } },
         },
         {
             type = 'list', id = 'door-characters', layout = 'cards', columns = 3,
@@ -261,7 +309,7 @@ local function accessBlocks(door)
         },
         {
             type = 'actions',
-            actions = { { id = 'door:item:add', label = 'Add key item', icon = 'Plus', variant = 'primary' } },
+            actions = { { id = prefix .. 'item:add', label = 'Add key item', icon = 'Plus', variant = 'primary' } },
         },
         {
             type = 'list', id = 'door-items', layout = 'cards', columns = 3,
@@ -272,11 +320,11 @@ local function accessBlocks(door)
 end
 
 local function lockpickForm(door)
-    local definition = door.definition
+    local definition, prefix = door.definition, prefixOf(door)
     local list = type(definition.lockpickDifficulty) == 'table' and definition.lockpickDifficulty or {}
     local legacy = list.pinCount == nil and list.tolerance == nil and list.speed == nil and next(list) ~= nil
     return {
-        type = 'form', id = blockId('door-lockpick', door.id), title = 'Lockpicking',
+        type = 'form', id = blockId('door-lockpick', door.blockKey or door.id), title = 'Lockpicking',
         fields = {
             { id = 'lockpick', label = 'Can be lockpicked', type = 'checkbox', default = definition.lockpick == true },
             { id = 'pinCount', label = 'Pins', type = 'number', min = 1, max = 12, default = list.pinCount or 5,
@@ -286,14 +334,14 @@ local function lockpickForm(door)
             { id = 'speed', label = 'Speed', type = 'number', min = 0.3, max = 4, default = list.speed or 1,
                 description = '0.3 to 4, higher is harder.' },
         },
-        action = { id = 'door:lockpick', label = 'Save' },
+        action = { id = prefix .. 'lockpick', label = 'Save' },
     }
 end
 
 local function soundsForm(door)
-    local definition = door.definition
+    local definition, prefix = door.definition, prefixOf(door)
     return {
-        type = 'form', id = blockId('door-sounds', door.id), title = 'Sounds',
+        type = 'form', id = blockId('door-sounds', door.blockKey or door.id), title = 'Sounds',
         fields = {
             { id = 'lockSound', label = 'Lock sound name', type = 'text', maxLength = 96, default = definition.lockSound or '',
                 description = 'Optional. Leave all four empty for the default sounds.' },
@@ -301,7 +349,7 @@ local function soundsForm(door)
             { id = 'unlockSound', label = 'Unlock sound name', type = 'text', maxLength = 96, default = definition.unlockSound or '' },
             { id = 'unlockSoundSet', label = 'Unlock sound set', type = 'text', maxLength = 96, default = definition.unlockSoundSet or '' },
         },
-        action = { id = 'door:sounds', label = 'Save' },
+        action = { id = prefix .. 'sounds', label = 'Save' },
     }
 end
 
@@ -374,6 +422,17 @@ local function doorView()
         },
         detailsForm(door),
     }
+    if #categories > 0 then
+        local options = { { value = 'none', label = 'No category' } }
+        for _, category in ipairs(categories) do options[#options + 1] = { value = category.id, label = category.label } end
+        blocks[#blocks + 1] = {
+            type = 'form', id = blockId('door-category', door.id), title = 'Category',
+            fields = { { id = 'category', label = 'Category', type = 'select', options = options,
+                default = door.definition.category or 'none',
+                description = 'Only for keeping doors organised. It never changes who can open the door, and the door ID stays the same.' } },
+            action = { id = 'door:category', label = 'Save' },
+        }
+    end
     for _, block in ipairs(accessBlocks(door)) do blocks[#blocks + 1] = block end
     blocks[#blocks + 1] = lockpickForm(door)
     blocks[#blocks + 1] = soundsForm(door)
@@ -410,8 +469,159 @@ local function doorView()
     }
 end
 
+-- ----------------------------------------------------------------------------
+-- Categories
+-- ----------------------------------------------------------------------------
+
+-- A short description of what a category gives new doors.
+local function defaultsText(defaults)
+    local parts = { defaults.locked == false and 'Starts unlocked' or 'Starts locked' }
+    local names = sortedKeys(defaults.groups)
+    if #names > 0 then
+        local groups = {}
+        for _, name in ipairs(names) do groups[#groups + 1] = ('%s %d'):format(name, defaults.groups[name]) end
+        parts[#parts + 1] = table.concat(groups, ', ')
+    end
+    if defaults.passcode then parts[#parts + 1] = 'passcode' end
+    if defaults.items then parts[#parts + 1] = 'key items' end
+    if defaults.characters then parts[#parts + 1] = 'characters' end
+    if defaults.lockpick then parts[#parts + 1] = 'lockpickable' end
+    return table.concat(parts, ' · ')
+end
+
+local function doorsOfCategory(category)
+    local list = {}
+    for _, door in ipairs(doors) do
+        if door.definition.category == category.id then list[#list + 1] = door end
+    end
+    -- police-2 before police-10: by the number at the end of the id, then by name.
+    local prefix = category.id .. '-'
+    local function number(door)
+        local n = door.id:sub(1, #prefix) == prefix and door.id:sub(#prefix + 1):match('^%d+$')
+        return n and tonumber(n) or math.huge
+    end
+    table.sort(list, function(a, b)
+        local na, nb = number(a), number(b)
+        if na ~= nb then return na < nb end
+        return a.label:lower() < b.label:lower()
+    end)
+    return list
+end
+
+local function categoriesView()
+    local rows = {}
+    for _, category in ipairs(categories) do
+        local count = #doorsOfCategory(category)
+        rows[#rows + 1] = {
+            id = category.id,
+            label = category.label,
+            icon = 'Building2',
+            description = defaultsText(category.defaults),
+            metadata = {
+                { label = 'Doors', value = tostring(count) },
+                { label = 'Next door', value = (nextCategoryId(category)) },
+            },
+            action = 'cat:select:' .. category.id,
+        }
+    end
+
+    return {
+        id = 'categories', label = 'Categories', icon = 'Building2',
+        content = {
+            title = 'Categories',
+            description = 'Optional. A category is a building or group of doors that share settings, like a police station. Doors never need one.',
+            blocks = {
+                {
+                    type = 'actions',
+                    actions = { { id = 'cat:new', label = 'Create new category', icon = 'Plus', variant = 'primary' } },
+                },
+                {
+                    type = 'list', id = 'category-list', layout = 'cards', columns = 3,
+                    title = ('Categories (%d)'):format(#rows), items = rows,
+                    searchable = true, searchPlaceholder = 'Search categories…', pageSize = 12,
+                    empty = 'No categories yet. Create one to place doors with shared settings.',
+                },
+            },
+        },
+    }
+end
+
+local function categoryView()
+    local category = categoryEntry(selectedCategory)
+    if not category then
+        return {
+            id = 'category', label = 'Category', icon = 'Building2',
+            content = { title = 'Category', blocks = { { type = 'empty', title = 'Pick a category first.' } } },
+        }
+    end
+
+    local members = doorsOfCategory(category)
+    local rows = {}
+    for _, door in ipairs(members) do
+        rows[#rows + 1] = {
+            id = door.id,
+            label = door.label,
+            description = stateText(door),
+            icon = door.leaves == 2 and 'DoorOpen' or 'DoorClosed',
+            tone = door.locked and 'warning' or 'success',
+            metadata = {
+                { label = 'ID', value = door.id },
+                { label = 'Access', value = (#accessList(door.definition) > 0) and table.concat(accessList(door.definition), ', ') or 'Public' },
+            },
+            action = 'door:select:' .. door.id,
+        }
+    end
+
+    local nextId = nextCategoryId(category)
+    local blocks = {
+        {
+            type = 'actions',
+            actions = { { id = 'cat:place', label = 'Place doors', icon = 'ScanSearch', variant = 'primary' } },
+        },
+        {
+            type = 'list', id = 'category-doors', layout = 'cards', columns = 3,
+            title = ('Doors in %s (%d)'):format(category.label, #rows), items = rows,
+            searchable = true, searchPlaceholder = 'Search these doors…', pageSize = 12,
+            empty = ('No doors yet. Press Place doors: the next one will be %s.'):format(nextId),
+        },
+        {
+            type = 'form', id = blockId('category-name', category.id), title = 'Name',
+            fields = { { id = 'label', label = 'Category name', type = 'text', required = true, maxLength = 64, default = category.label,
+                description = ('Doors are called %s-1, %s-2 ... Renaming the category does not change the IDs of doors already placed.'):format(category.id, category.id) } },
+            action = { id = 'cat:rename', label = 'Save' },
+        },
+    }
+
+    local target = categoryTarget(category)
+    blocks[#blocks + 1] = {
+        type = 'list', id = 'category-defaults-note', layout = 'cards', columns = 1, title = 'Default settings for new doors',
+        items = { {
+            id = 'note', label = 'Copied to every door placed from now on',
+            icon = 'Copy', description = 'Doors already placed keep what they have. To change one door only, open it from the list above and edit it there.',
+        } },
+    }
+    blocks[#blocks + 1] = detailsForm(target)
+    for _, block in ipairs(accessBlocks(target)) do blocks[#blocks + 1] = block end
+    blocks[#blocks + 1] = lockpickForm(target)
+    blocks[#blocks + 1] = soundsForm(target)
+    blocks[#blocks + 1] = {
+        type = 'actions', title = 'Danger zone',
+        actions = { { id = 'cat:delete', label = 'Delete category', variant = 'destructive' } },
+    }
+
+    return {
+        id = 'category', label = category.label, icon = 'Building2',
+        content = {
+            title = category.label,
+            description = ('%d door(s). Next door: %s. %s.'):format(#rows, nextId, defaultsText(category.defaults)),
+            blocks = blocks,
+        },
+    }
+end
+
 local function buildNavigation()
-    local navigation = { doorsView() }
+    local navigation = { doorsView(), categoriesView() }
+    if selectedCategory and categoryEntry(selectedCategory) then navigation[#navigation + 1] = categoryView() end
     if selectedDoor and doorEntry(selectedDoor) then navigation[#navigation + 1] = doorView() end
     return navigation
 end
@@ -427,10 +637,16 @@ local function fail(message)
 end
 
 local function setData(snapshot)
-    doors = type(snapshot) == 'table' and snapshot or {}
+    snapshot = type(snapshot) == 'table' and snapshot or {}
+    doors = type(snapshot.doors) == 'table' and snapshot.doors or {}
+    categories = type(snapshot.categories) == 'table' and snapshot.categories or {}
     if selectedDoor and not doorEntry(selectedDoor) then
         selectedDoor = nil
         if currentView == 'door' then currentView = 'doors' end
+    end
+    if selectedCategory and not categoryEntry(selectedCategory) then
+        selectedCategory = nil
+        if currentView == 'category' then currentView = 'categories' end
     end
 end
 
@@ -456,7 +672,12 @@ local function edit(door, mutate, message)
     local refusal = mutate(definition)
     if refusal then return fail(refusal) end
 
-    local result, err = change('qbdoorlock:server:managementDoorSaved', door.id, definition, false)
+    local result, err
+    if door.isCategory then
+        result, err = change('qbdoorlock:server:managementCategoryDefaultsSaved', door.id, definition)
+    else
+        result, err = change('qbdoorlock:server:managementDoorSaved', door.id, definition, false)
+    end
     if not result then return fail(err or 'Failed to save.') end
     return refresh(notice(message or 'Saved.'))
 end
@@ -523,9 +744,9 @@ local function askItem(current)
     return { name = name:lower(), metadata = next(metadata) and metadata or nil, remove = values.remove == 'use' or nil }
 end
 
-local function detailsInput(definition, values)
+local function detailsInput(definition, values, isCategory)
     local seconds = tonumber(values.autoLock) or 0
-    definition.label = text(values.label)
+    if not isCategory then definition.label = text(values.label) end
     definition.distance = tonumber(values.distance)
     definition.autoLock = seconds > 0 and math.floor(seconds * 1000) or nil
     definition.doorRate = tonumber(values.doorRate)
@@ -560,23 +781,77 @@ local function leafOf(leaf)
 end
 
 -- Runs with the creator closed: aim at one door, or two for a double door.
-local function captureGeometry(double)
-    local first = DoorlockClient.selectLeaf(nil, 'select_first')
+-- Returns nil when it is cancelled, and at which door (`'first'` or `'second'`). `hint` replaces the on-screen
+-- text; `quiet` skips the "cancelled" message (placing many doors ends by cancelling, so that is not an error).
+local function captureGeometry(double, hint, quiet)
+    local first = DoorlockClient.selectLeaf(nil, 'select_first', hint)
     if not first then
-        DoorlockClient.notify(DoorlockClient.translate('selection_cancelled'), 'error')
-        return nil
+        if not quiet then DoorlockClient.notify(DoorlockClient.translate('selection_cancelled'), 'error') end
+        return nil, 'first'
     end
     if not double then return leafOf(first) end
 
-    local second = DoorlockClient.selectLeaf(first, 'select_second')
+    local second = DoorlockClient.selectLeaf(first, 'select_second', hint and (hint .. ' · aim at the second door') or nil)
     if not second then
-        DoorlockClient.notify(DoorlockClient.translate('selection_cancelled'), 'error')
-        return nil
+        if not quiet then DoorlockClient.notify(DoorlockClient.translate('selection_cancelled'), 'error') end
+        return nil, 'second'
     end
     return { doors = { leafOf(first), leafOf(second) } }
 end
 
+-- Places doors in a category, in two stages, with the creator closed:
+--   1. single doors, one after another. Each E saves a door (category-N) straight away. Backspace ends the stage.
+--   2. a prompt for double doors. If accepted, two aims per door. Backspace at the first door ends the stage;
+--      Backspace at the second door only drops that pair, so a wrong first door can be redone.
+-- Afterwards the creator opens on the category, where every door can be changed on its own.
+local function placeCategoryDoors(categoryId)
+    local category = categoryEntry(categoryId)
+    if not category then return end
+    local placed = 0
+
+    local function stage(double)
+        while true do
+            local current = categoryEntry(categoryId)
+            if not current then return end
+            local nextId = nextCategoryId(current)
+            local hint = ('%s · %s door → %s'):format(current.label, double and 'double' or 'single', nextId)
+
+            local geometry, cancelledAt = captureGeometry(double, hint, true)
+            if geometry then
+                local result, err = QB.callback.trigger('qbdoorlock:server:managementCategoryDoorCreated', categoryId, geometry)
+                if result then
+                    setData(result.snapshot)
+                    revision = revision + 1
+                    placed = placed + 1
+                    DoorlockClient.notify(('%s placed (%s).'):format(result.label, result.id), 'success')
+                else
+                    toast(err or NO_ANSWER)
+                end
+            elseif cancelledAt == 'second' then
+                DoorlockClient.notify('That pair was cancelled. Aim at the first door again, or press Backspace to finish.', 'info')
+            else
+                return
+            end
+        end
+    end
+
+    stage(false)
+
+    local answer = QB.nui.openAlert({
+        title = 'Double doors',
+        message = ('Single doors are done for %s. Place double doors now?'):format(category.label),
+        confirmLabel = 'Place double doors',
+    })
+    if answer and answer.confirmed == true then stage(true) end
+
+    selectedCategory, currentView = categoryId, 'category'
+    revision = revision + 1
+    DoorlockClient.notify(('%d door(s) placed in %s.'):format(placed, category.label), placed > 0 and 'success' or 'info')
+end
+
 local function runTool(tool)
+    if tool.kind == 'category' then return placeCategoryDoors(tool.id) end
+
     local geometry = captureGeometry(tool.double)
     if not geometry then return end
 
@@ -587,7 +862,7 @@ local function runTool(tool)
         local definition = copyValue(door.definition)
         applyGeometry(definition, geometry)
         local result, err = change('qbdoorlock:server:managementDoorSaved', door.id, definition, false)
-        if not result then return toast(err or 'Could not retarget the door.') end
+        if not result then return toast(err or NO_ANSWER) end
         return DoorlockClient.notify(DoorlockClient.translate('door_retargeted'), 'success')
     end
 
@@ -597,7 +872,7 @@ local function runTool(tool)
     applyGeometry(definition, geometry)
 
     local result, err = QB.callback.trigger('qbdoorlock:server:managementDoorCreated', definition)
-    if not result then return toast(err or 'Could not save the door.') end
+    if not result then return toast(err or NO_ANSWER) end
 
     setData(result.doors)
     revision = revision + 1
@@ -695,7 +970,7 @@ local function itemAction(door, actionId)
     return refresh()
 end
 
-local function doorAction(actionId, values)
+local function doorAction(actionId, values, target)
     if actionId == 'door:new' then
         local new = askNewDoor('New door', '', false)
         if not new then return refresh() end
@@ -720,7 +995,7 @@ local function doorAction(actionId, values)
         return openDoor(selectId)
     end
 
-    local door = doorEntry(selectedDoor)
+    local door = target or doorEntry(selectedDoor)
     if not door then return fail('Pick a door first.') end
 
     if actionId == 'door:toggle' then
@@ -735,7 +1010,13 @@ local function doorAction(actionId, values)
     end
 
     if actionId == 'door:details' then
-        return edit(door, function(definition) detailsInput(definition, values) end)
+        return edit(door, function(definition) detailsInput(definition, values, door.isCategory) end)
+    end
+
+    if actionId == 'door:category' then
+        local value = optionalText(values.category)
+        return edit(door, function(definition) definition.category = value ~= 'none' and value or nil end,
+            value ~= 'none' and 'Category saved.' or 'Removed from its category.')
     end
 
     if actionId == 'door:passcode' then
@@ -796,8 +1077,82 @@ local function doorAction(actionId, values)
     return refresh()
 end
 
+local function openCategory(id, message)
+    selectedCategory = id
+    revision = revision + 1
+    currentView = 'category'
+    return refresh(message)
+end
+
+local function askCategoryName()
+    local result = QB.nui.openInputDialog({
+        { id = 'name', label = 'Category name', type = 'text', required = true, maxLength = 64 },
+    }, 'New category', 'For example a building: "Mission Row PD". Its doors will be called mission-row-pd-1, mission-row-pd-2 ...')
+    if not result or result.cancelled then return nil end
+    return optionalText(result.values and result.values.name)
+end
+
+local function categoryAction(actionId, values)
+    if actionId == 'cat:new' then
+        local name = askCategoryName()
+        if not name then return refresh() end
+        local result, err = QB.callback.trigger('qbdoorlock:server:managementCategoryCreated', name)
+        if not result then return fail(err or NO_ANSWER) end
+        setData(result.snapshot)
+        return openCategory(result.id, notice('Category created. Set its default settings, then place doors.'))
+    end
+
+    local selectId = actionId:match('^cat:select:(.+)$')
+    if selectId then
+        if not categoryEntry(selectId) then return fail('Unknown category.') end
+        return openCategory(selectId)
+    end
+
+    local category = categoryEntry(selectedCategory)
+    if not category then return fail('Pick a category first.') end
+
+    if actionId == 'cat:place' then
+        pendingTool = { kind = 'category', id = category.id }
+        return { close = true }
+    end
+
+    if actionId == 'cat:rename' then
+        local result, err = change('qbdoorlock:server:managementCategoryRenamed', category.id, text(values.label))
+        if not result then return fail(err or 'Failed to rename the category.') end
+        return refresh(notice('Saved.'))
+    end
+
+    if actionId == 'cat:delete' then
+        if not confirmed('Delete category?', ('This removes the category %s. Its doors are kept, they just stop being in a category.'):format(category.label)) then
+            return refresh()
+        end
+        local result, err = change('qbdoorlock:server:managementCategoryDeleted', category.id)
+        if not result then return fail(err or 'Failed to delete the category.') end
+        selectedCategory, currentView = nil, 'categories'
+        return refresh(notice('Category deleted. Its doors were kept.'))
+    end
+
+    return refresh()
+end
+
+-- Only the actions that edit settings are shared with a category's defaults.
+local DEFAULTS_ACTIONS = {
+    '^door:details$', '^door:passcode$', '^door:group:', '^door:character:', '^door:item:', '^door:lockpick$', '^door:sounds$',
+}
+
+local function defaultsAction(actionId, values)
+    local category = categoryEntry(selectedCategory)
+    if not category then return fail('Pick a category first.') end
+    for _, pattern in ipairs(DEFAULTS_ACTIONS) do
+        if actionId:match(pattern) then return doorAction(actionId, values, categoryTarget(category)) end
+    end
+    return refresh()
+end
+
 local function onAction(actionId, context)
     local values = context and type(context.value) == 'table' and context.value or {}
+    if actionId:match('^cat:') then return categoryAction(actionId, values) end
+    if actionId:match('^cd:') then return defaultsAction('door:' .. actionId:sub(4), values) end
     if actionId:match('^door:') then return doorAction(actionId, values) end
     return refresh()
 end

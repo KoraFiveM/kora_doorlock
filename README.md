@@ -38,8 +38,8 @@ and lockpick setting, a *Closest to me* sort and a *Refresh* button. Pick a door
 to edit it.
 
 **Creating a door**: press *Create new door*, type a name and say whether it is a
-double door. The creator closes: aim at the door and press **E** (for a double
-door, then aim at the second leaf and press **E** again). **X** cancels. The door
+double door. The creator closes: aim at the door (it is outlined, found with `QB.raycast`) and press **E** to confirm (for a double
+door, then aim at the second leaf and press **E** again). **Backspace** cancels. The door
 ID is made from the name (`Back Office` becomes `back-office`), and the new door's
 page opens when you are done.
 
@@ -60,6 +60,34 @@ Every change is checked and saved by the server, and the creator shows what it
 refused. Doors created or edited in-game are persistent. Editing a door authored in
 `Config.Doors` creates a database override; deleting one creates a persistent
 tombstone, so it does not reappear from config after a restart.
+
+## Categories (optional)
+
+A category is a name plus default settings for new doors, for quick and organised creation. Think of a building:
+"Police" with the police job on it. Doors never need a category, and *Create new door* works as before.
+
+1. **Categories** page, *Create new category*, type a name (`Police`). The category ID is made from it (`police`).
+2. On the category's page set its **default settings** (details, passcode, jobs and gangs, characters, key items,
+   lockpicking, sounds). They are copied to every door placed from then on.
+3. Press **Place doors**. The creator closes and runs two stages:
+   - **Single doors**: aim at a door and press **E**. It is saved at once as `police-1`, named *Police 1*, with
+     the defaults, and you can aim at the next one. **Backspace** ends the stage.
+   - A prompt asks about **double doors**. If you accept, aim at the first door, **E**, aim at the second, **E**.
+     **Backspace** at the first door ends the stage. **Backspace** at the second only drops that pair, so a wrong
+     first door can be redone.
+4. The creator opens on the category with the list of its doors, numbered in order.
+
+Every door keeps its own copy of the settings. To change one door only (the chief's office needs grade 4 instead
+of 0) open it from the list and edit it like any other door. Changing the category's defaults later only affects
+doors placed afterwards. The door ID stays `police-N` whatever the door is renamed to.
+
+- The next number is one above the highest `category-N` that exists, so deleting a door never renumbers the others.
+- A door that is already placed is refused if you aim at it again.
+- A door can be moved into or out of a category from its own page (*Category*). This only organises the creator:
+  it never changes who can open a door.
+- Deleting a category keeps its doors; they just stop being in a category.
+- Categories are stored in the `qbdoorlock_categories` table (`sql/003_categories.sql`, also created at start if
+  the migration has not run). A door's category is saved in the door itself.
 
 ## Configuration
 

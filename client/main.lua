@@ -1,7 +1,8 @@
 local doors, activeDoors, streamedDoors, entityDoors = {}, {}, {}, {}
 local targetModels, pendingTargetModels = {}, {}
 local nearbyDoor, prompt, pickingLock, lockpickTarget
-local selection, toggleBinding, selectBinding, cancelBinding
+local toggleBinding, activeSelection
+local SELECT_CONTROLS = { 38, 177 } -- E confirms, Backspace cancels, like QB.raycast.getCoords
 local spriteDicts = {}
 
 local function translate(key, replacements)
@@ -27,7 +28,7 @@ local function doorDistance(door, position)
 end
 
 local function stateText(door)
-    return translate(door.locked and 'unlock_door' or 'lock_door', { door = door.label })
+    return door.locked and 'unlock_door' or 'lock_door'
 end
 
 local function hidePrompt()
@@ -194,30 +195,53 @@ local function targetedLeaf()
     return { entity = entity, model = GetEntityModel(entity), coords = { x = coords.x, y = coords.y, z = coords.z }, heading = GetEntityHeading(entity) }
 end
 
-local function finishSelection(value)
-    local current = selection
-    if not current then return end
-    selection = nil
-    selectBinding.disable(true)
-    cancelBinding.disable(true)
+local function releaseSelection(state)
+    if state.released then return end
+    state.released = true
+    if activeSelection == state then activeSelection = nil end
+    if state.highlighted and DoesEntityExist(state.highlighted) then SetEntityDrawOutline(state.highlighted, false) end
+    state.highlighted = nil
+    if state.hint then pcall(QB.textui.hide, state.hint) end
     toggleBinding.disable(false)
-    if current.prompt then QB.textui.hide(current.prompt) end
-    current.promise:resolve(value)
 end
 
--- Waits for the player to aim at a map door and press E (X cancels). `first` is
--- the leaf already chosen, so a double door cannot pick the same leaf twice.
-local function selectLeaf(first, promptKey)
-    local promise = promise.new()
-    selection = {
-        first = first,
-        promise = promise,
-        prompt = QB.textui.show(translate(promptKey or 'select_second'), { key = 'E', icon = 'DoorOpen', position = 'right-center' }),
-    }
+-- Blocks until the player confirms the map door under the crosshair with E, or
+-- cancels with Backspace (returns nil). The door is found with QB.raycast and
+-- outlined while aimed at. `first` is a leaf already chosen, so a double door
+-- cannot pick the same leaf twice. `hintText` replaces the default prompt text.
+local function selectLeaf(first, promptKey, hintText)
+    if activeSelection then return nil end
+    local state = {}
+    activeSelection = state
     toggleBinding.disable(true)
-    selectBinding.disable(false)
-    cancelBinding.disable(false)
-    return Citizen.Await(promise)
+    state.hint = QB.textui.show(('%s  ·  **E:** confirm  ·  **Backspace:** cancel'):format(hintText or translate(promptKey or 'select_second')),
+        { icon = 'DoorOpen' })
+
+    local ok, result = pcall(function()
+        while activeSelection == state do
+            local leaf = targetedLeaf()
+            if leaf and first and leaf.entity == first.entity then leaf = nil end
+
+            if leaf and state.highlighted ~= leaf.entity then
+                if state.highlighted and DoesEntityExist(state.highlighted) then SetEntityDrawOutline(state.highlighted, false) end
+                state.highlighted = leaf.entity
+                SetEntityDrawOutlineColor(255, 255, 255, 255)
+                SetEntityDrawOutline(leaf.entity, true)
+            elseif not leaf and state.highlighted then
+                if DoesEntityExist(state.highlighted) then SetEntityDrawOutline(state.highlighted, false) end
+                state.highlighted = nil
+            end
+
+            for _, control in ipairs(SELECT_CONTROLS) do DisableControlAction(0, control, true) end
+            if IsDisabledControlJustReleased(0, 177) then return nil end
+            if leaf and IsDisabledControlJustReleased(0, 38) then return leaf end
+            Wait(0)
+        end
+        return nil
+    end)
+    releaseSelection(state)
+    if not ok then error(result, 0) end
+    return result
 end
 
 -- The creator (client/creator.lua) is a separate script, so it reaches the door
@@ -247,20 +271,6 @@ toggleBinding = QB.keybind.add({
     name = 'qbdoorlock_toggle', description = 'Lock or unlock the nearby door', defaultKey = 'E', defaultMapper = 'keyboard',
     onPressed = function() if nearbyDoor then QB.events.trigger('qbdoorlock:server:doorToggled', nearbyDoor) end end,
 })
-selectBinding = QB.keybind.add({
-    name = 'qbdoorlock_select_door', description = 'Select an additional door', defaultKey = 'E', defaultMapper = 'keyboard', disabled = true,
-    onPressed = function()
-        if not selection then return end
-        local leaf = targetedLeaf()
-        if not leaf then return notify(translate('look_at_door'), 'error') end
-        if selection.first and leaf.entity == selection.first.entity then return notify(translate('different_door'), 'error') end
-        finishSelection(leaf)
-    end,
-})
-cancelBinding = QB.keybind.add({
-    name = 'qbdoorlock_cancel_selection', description = 'Cancel door selection', defaultKey = 'X', defaultMapper = 'keyboard', disabled = true,
-    onPressed = function() finishSelection(nil) end,
-})
 
 CreateThread(function()
     local spriteConfig = Config.DrawSprite
@@ -276,6 +286,7 @@ end)
 
 AddEventHandler('onClientResourceStop', function(resource)
     if resource ~= GetCurrentResourceName() then return end
+    if activeSelection then releaseSelection(activeSelection) end
     for dictionary in pairs(spriteDicts) do SetStreamedTextureDictAsNoLongerNeeded(dictionary) end
 end)
 

@@ -2,6 +2,7 @@ local RESOURCE = GetCurrentResourceName()
 local doors, states, linkedDoors, configuredIds = {}, {}, {}, {}
 local autoLockTimers, pendingLockpicks = {}, {}
 local databaseReady, initializationComplete = false, false
+local categories, categoriesReady = {}, false -- id -> { id, label, defaults }
 local hooks, nextHookId = {}, 0
 
 local function translate(key, replacements)
@@ -244,7 +245,10 @@ local function persistDoor(id, door)
     local saved, err = QB.sql.execute(
         'INSERT INTO `qbdoorlock_doors` (`id`, `definition`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `definition` = VALUES(`definition`)',
         { id, encodeDefinition(door) })
-    if saved == nil then return false, err or 'Could not save the door.' end
+    if saved == nil then
+        print(('^1[qbdoorlock]^7 saving door %s failed: %s'):format(tostring(id), tostring(err or 'qbsql returned nothing')))
+        return false, err or 'The database refused the door. See the server console.'
+    end
     return true
 end
 
@@ -281,7 +285,11 @@ local function managementSnapshot(source)
         }
     end
     table.sort(result, function(a, b) return a.label:lower() < b.label:lower() end)
-    return result
+
+    local list = {}
+    for id, category in pairs(categories) do list[#list + 1] = { id = id, label = category.label, defaults = category.defaults } end
+    table.sort(list, function(a, b) return a.label:lower() < b.label:lower() end)
+    return { doors = result, categories = list }
 end
 
 local function unlinkDoor(id)
@@ -372,6 +380,7 @@ local function saveManagedDoor(source, id, raw, creating)
     if not creating and not doors[id] then return nil, 'That door is no longer configured.' end
     local door, err = DoorlockSchema.normalize(raw, Config.InteractionDistance)
     if not door then return nil, err end
+    if door.category and categoriesReady and not categories[door.category] then door.category = nil end
     if creating and not validateCreationDistance(source, door) then return nil, 'All selected doors must be within 12 metres of you.' end
     local saved, saveErr = persistDoor(id, door)
     if not saved then return nil, saveErr end
@@ -379,6 +388,11 @@ local function saveManagedDoor(source, id, raw, creating)
     states[id] = door.locked
     setDoorState(id, door.locked, source)
     return managementSnapshot(source)
+end
+
+local function logRefusal(source, action, err)
+    print(('^3[qbdoorlock]^7 %s refused for player %s: %s'):format(action, tostring(source), tostring(err)))
+    return nil, err
 end
 
 QB.callback.register('qbdoorlock:server:managementDoorSaved', function(source, requestedId, raw, creating)
@@ -392,9 +406,191 @@ QB.callback.register('qbdoorlock:server:managementDoorCreated', function(source,
     if type(raw) ~= 'table' then return nil, 'Door definition must be a table.' end
     local id = uniqueDoorId(raw.label)
     local snapshot, err = saveManagedDoor(source, id, raw, true)
-    if not snapshot then return nil, err end
+    if not snapshot then return logRefusal(source, 'creating ' .. id, err) end
     return { doors = snapshot, id = id }
 end, { rateLimit = { max = 8, window = 10000 } })
+
+-- ---------------------------------------------------------------------------
+-- Categories (optional). A category is a name plus default settings for new doors, for quick and organised
+-- creation: "police" with the police job on it, then every door placed in it starts from those settings and is
+-- called police-1, police-2 ... Each door keeps its own copy, so changing one door never touches the others and
+-- changing the category later only affects doors placed afterwards.
+-- ---------------------------------------------------------------------------
+
+local CATEGORY_LIMIT = 100
+
+local function copyDefinition(value)
+    if type(value) ~= 'table' then return value end
+    local copy = {}
+    for key, entry in pairs(value) do copy[key] = copyDefinition(entry) end
+    return copy
+end
+
+local function categoryName(value)
+    if type(value) ~= 'string' then return nil end
+    value = value:gsub('^%s*(.-)%s*$', '%1')
+    if value == '' or #value > 64 then return nil end
+    return value
+end
+
+local function uniqueCategoryId(label)
+    local base = label:lower():gsub('[^a-z0-9]+', '-'):gsub('^-', ''):gsub('-$', '')
+    if base == '' then base = 'category' end
+    base = base:sub(1, 40):gsub('-$', '')
+    local id, suffix = base, 1
+    while categories[id] do suffix = suffix + 1; id = ('%s-%d'):format(base, suffix) end
+    return id
+end
+
+local function persistCategory(category)
+    local saved, err = QB.sql.execute(
+        'INSERT INTO `qbdoorlock_categories` (`id`, `label`, `defaults`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `defaults` = VALUES(`defaults`)',
+        { category.id, category.label, json.encode(category.defaults) })
+    if saved == nil then
+        print(('^1[qbdoorlock]^7 saving category %s failed: %s'):format(category.id, tostring(err or 'qbsql returned nothing')))
+        return false, err or 'The database refused the category. See the server console.'
+    end
+    return true
+end
+
+-- Why this player can not manage categories right now, or nil.
+local function categoryProblem(source)
+    if not isAdmin(source) then return 'You do not have permission to manage door locks.' end
+    if not databaseReady then return 'Door storage is still starting.' end
+    if not categoriesReady then return 'Door categories are unavailable. Check the server console.' end
+    return nil
+end
+
+-- The next number for a category's doors: one above the highest police-N that exists.
+local function nextCategoryIndex(categoryId)
+    local prefix, highest = categoryId .. '-', 0
+    for id in pairs(doors) do
+        if id:sub(1, #prefix) == prefix then
+            local number = id:sub(#prefix + 1)
+            if number:match('^%d+$') then highest = math.max(highest, tonumber(number)) end
+        end
+    end
+    return highest + 1
+end
+
+-- The id of a door that already covers one of this door's leaves, so one door is never placed twice.
+local function findExistingDoor(door)
+    for id, other in pairs(doors) do
+        for _, leaf in ipairs(doorLeaves(door)) do
+            for _, otherLeaf in ipairs(doorLeaves(other)) do
+                if otherLeaf.model == leaf.model and #(leaf.coords - otherLeaf.coords) < 0.05 then return id end
+            end
+        end
+    end
+    return nil
+end
+
+QB.callback.register('qbdoorlock:server:managementCategoryCreated', function(source, rawLabel)
+    local problem = categoryProblem(source)
+    if problem then return nil, problem end
+    local label = categoryName(rawLabel)
+    if not label then return nil, 'Category name must be 1-64 characters.' end
+
+    local count = 0
+    for _ in pairs(categories) do count = count + 1 end
+    if count >= CATEGORY_LIMIT then return nil, ('There can be at most %d categories.'):format(CATEGORY_LIMIT) end
+
+    local defaults, err = DoorlockSchema.normalizeTemplate({ locked = true, lockpick = false }, Config.InteractionDistance)
+    if not defaults then return nil, err end
+
+    local category = { id = uniqueCategoryId(label), label = label, defaults = defaults }
+    local saved, saveErr = persistCategory(category)
+    if not saved then return nil, saveErr end
+    categories[category.id] = category
+    return { snapshot = managementSnapshot(source), id = category.id }
+end, { rateLimit = { max = 6, window = 10000 } })
+
+QB.callback.register('qbdoorlock:server:managementCategoryRenamed', function(source, id, rawLabel)
+    local problem = categoryProblem(source)
+    if problem then return nil, problem end
+    local category = type(id) == 'string' and categories[id] or nil
+    if not category then return nil, 'That category no longer exists.' end
+    local label = categoryName(rawLabel)
+    if not label then return nil, 'Category name must be 1-64 characters.' end
+
+    local updated = { id = id, label = label, defaults = category.defaults }
+    local saved, err = persistCategory(updated)
+    if not saved then return nil, err end
+    categories[id] = updated
+    return managementSnapshot(source)
+end, { rateLimit = { max = 10, window = 10000 } })
+
+QB.callback.register('qbdoorlock:server:managementCategoryDefaultsSaved', function(source, id, raw)
+    local problem = categoryProblem(source)
+    if problem then return nil, problem end
+    local category = type(id) == 'string' and categories[id] or nil
+    if not category then return nil, 'That category no longer exists.' end
+
+    local defaults, err = DoorlockSchema.normalizeTemplate(raw, Config.InteractionDistance)
+    if not defaults then return nil, err end
+
+    local updated = { id = id, label = category.label, defaults = defaults }
+    local saved, saveErr = persistCategory(updated)
+    if not saved then return nil, saveErr end
+    categories[id] = updated
+    return managementSnapshot(source)
+end, { rateLimit = { max = 15, window = 10000 } })
+
+-- Deleting a category keeps its doors: they just stop being in a category.
+QB.callback.register('qbdoorlock:server:managementCategoryDeleted', function(source, id)
+    local problem = categoryProblem(source)
+    if problem then return nil, problem end
+    if type(id) ~= 'string' or not categories[id] then return nil, 'That category no longer exists.' end
+
+    for doorId, door in pairs(doors) do
+        if door.category == id then
+            local previous = door.category
+            door.category = nil
+            local saved, err = persistDoor(doorId, door)
+            if not saved then
+                door.category = previous
+                return nil, err
+            end
+        end
+    end
+
+    local removed, err = QB.sql.execute('DELETE FROM `qbdoorlock_categories` WHERE `id` = ?', { id })
+    if removed == nil then return nil, err or 'Could not delete the category.' end
+    categories[id] = nil
+    return managementSnapshot(source)
+end, { rateLimit = { max = 5, window = 10000 } })
+
+-- Places one door in a category: its settings are the category's defaults, its id is category-N and its
+-- name is "Category N" (both can be changed on the door afterwards, the id stays). Called once per door while
+-- the creator is placing, so the rate limit leaves room for a busy building.
+QB.callback.register('qbdoorlock:server:managementCategoryDoorCreated', function(source, categoryId, geometry)
+    local problem = categoryProblem(source)
+    if problem then return nil, problem end
+    local category = type(categoryId) == 'string' and categories[categoryId] or nil
+    if not category then return nil, 'That category no longer exists.' end
+    if type(geometry) ~= 'table' then return nil, 'Aim at a door first.' end
+
+    local index = nextCategoryIndex(category.id)
+    local id = ('%s-%d'):format(category.id, index)
+
+    local raw = copyDefinition(category.defaults)
+    raw.label, raw.category = ('%s %d'):format(category.label, index), category.id
+    raw.model, raw.coords, raw.heading, raw.doors = nil, nil, nil, nil
+    if geometry.doors ~= nil then
+        raw.doors = geometry.doors
+    else
+        raw.model, raw.coords, raw.heading = geometry.model, geometry.coords, geometry.heading
+    end
+
+    local door, err = DoorlockSchema.normalize(raw, Config.InteractionDistance)
+    if not door then return logRefusal(source, 'placing ' .. id, err) end
+    local existing = findExistingDoor(door)
+    if existing then return nil, ('That door is already %s.'):format(existing) end
+
+    local snapshot, saveErr = saveManagedDoor(source, id, raw, true)
+    if not snapshot then return logRefusal(source, 'placing ' .. id, saveErr) end
+    return { snapshot = snapshot, id = id, label = door.label }
+end, { rateLimit = { max = 40, window = 10000 } })
 
 QB.callback.register('qbdoorlock:server:managementDoorDeleted', function(source, id)
     if not isAdmin(source) then return nil, 'You do not have permission to delete door locks.' end
@@ -630,11 +826,7 @@ CreateThread(function()
         initializationComplete = true
         return print('^1[qbdoorlock]^7 qbsql was not ready; persistent door management is disabled.')
     end
-    local _, migrationErr = QB.sql.migrateFiles(RESOURCE, {
-        { version = 1, name = 'doors', file = 'sql/001_doors.sql' },
-        { version = 2, name = 'links', file = 'sql/002_links.sql' },
-    })
-    if migrationErr then initializationComplete = true; return print(('^1[qbdoorlock]^7 migration failed: %s'):format(migrationErr)) end
+    
     local rows, queryErr = QB.sql.query('SELECT `id`, `definition` FROM `qbdoorlock_doors`')
     if queryErr then initializationComplete = true; return print(('^1[qbdoorlock]^7 could not load doors: %s'):format(queryErr)) end
     for _, row in ipairs(rows) do
@@ -659,6 +851,24 @@ CreateThread(function()
             and doors[row.door_id] and doors[row.linked_door_id] then candidates[row.door_id] = row.linked_door_id end
     end
     for id, linkedId in pairs(candidates) do if candidates[linkedId] == id then linkedDoors[id] = linkedId end end
+
+    QB.sql.execute('CREATE TABLE IF NOT EXISTS `qbdoorlock_categories` (`id` VARCHAR(48) NOT NULL, `label` VARCHAR(96) NOT NULL, `defaults` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci')
+    local categoryRows, categoryErr = QB.sql.query('SELECT `id`, `label`, `defaults` FROM `qbdoorlock_categories`')
+    if categoryErr then
+        print(('^3[qbdoorlock]^7 could not load door categories: %s'):format(tostring(categoryErr)))
+    else
+        for _, row in ipairs(categoryRows) do
+            local ok, raw = pcall(json.decode, row.defaults)
+            local defaults = ok and DoorlockSchema.normalizeTemplate(raw, Config.InteractionDistance) or nil
+            if type(row.id) == 'string' and type(row.label) == 'string' and defaults then
+                categories[row.id] = { id = row.id, label = row.label, defaults = defaults }
+            else
+                print(('^3[qbdoorlock]^7 skipped malformed stored category %s'):format(tostring(row.id)))
+            end
+        end
+        categoriesReady = true
+    end
+
     databaseReady, initializationComplete = true, true
     TriggerEvent('qbdoorlock:loaded')
 end)
