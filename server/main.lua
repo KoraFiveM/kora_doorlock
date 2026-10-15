@@ -4,6 +4,7 @@ local autoLockTimers, pendingLockpicks = {}, {}
 local databaseReady, initializationComplete = false, false
 local categories, categoriesReady = {}, false -- id -> { id, label, defaults }
 local hooks, nextHookId = {}, 0
+local doorPolicies = {}
 
 local function translate(key, replacements)
     return QB.lang(key, replacements)
@@ -149,7 +150,7 @@ local function hasDoorAce(source, id, door)
         or QB.permissions.hasPermission(source, door.label, 'doorlock')
 end
 
-local function hasAccess(source, id, door, lockpick)
+local function hasAccess(source, id, door, lockpick, skipLinked)
     local player = getPlayer(source)
     local authorised, usedRequirement, usedSlot = hasDoorAce(source, id, door), nil, nil
     if lockpick then
@@ -172,10 +173,21 @@ local function hasAccess(source, id, door, lockpick)
         authorised = type(supplied) == 'string' and supplied == door.passcode
     end
     local hookResult = triggerHooks('doorAuthorization', {
-        source = source, door = DoorlockSchema.forNetwork(door),
+        source = source, doorId = id, door = DoorlockSchema.forNetwork(door),
         lockpick = lockpick == true, authorised = authorised == true,
     })
     if hookResult == true then authorised = true end
+    if door.policyOwner then
+        local policy = doorPolicies[id]
+        if not policy or policy.owner ~= door.policyOwner then return false end
+        local ok, allowed = pcall(policy.callback, source, id, {
+            lockpick = lockpick == true, authorised = authorised == true, door = DoorlockSchema.forNetwork(door),
+        })
+        authorised = ok and allowed == true
+    end
+    local linkedId = not skipLinked and linkedDoors[id]
+    local linked = linkedId and getDoor(linkedId)
+    if authorised and linked and linked.policyOwner and not hasAccess(source, linkedId, linked, lockpick, true) then return false end
     return authorised == true, usedRequirement, usedSlot
 end
 
@@ -240,12 +252,14 @@ end
 
 local function encodeDefinition(door) return json.encode(DoorlockSchema.forNetwork(door)) end
 
-local function persistDoor(id, door)
+local function persistDoor(id, door, releasePolicy)
     if not databaseReady then return false, 'Door storage is not ready.' end
+    -- Ordinary editor saves must not remove another resource's access boundary.
+    if not releasePolicy and doors[id] and doors[id].policyOwner then door.policyOwner = doors[id].policyOwner end
     local saved, err = QB.sql.execute(
         'INSERT INTO `qbdoorlock_doors` (`id`, `definition`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `definition` = VALUES(`definition`)',
         { id, encodeDefinition(door) })
-    if saved == nil then
+    if not saved then
         print(('^1[qbdoorlock]^7 saving door %s failed: %s'):format(tostring(id), tostring(err or 'qbsql returned nothing')))
         return false, err or 'The database refused the door. See the server console.'
     end
@@ -322,7 +336,7 @@ local function deleteDoor(id)
     local removed, err = QB.sql.execute(query, parameters)
     if removed == nil then return false, err or 'Could not delete the door.' end
     clearAutoLock(id)
-    doors[id], states[id] = nil, nil
+    doors[id], states[id], doorPolicies[id] = nil, nil, nil
     QB.events.push(-1, 'qbdoorlock:client:doorDefinitionRemoved', id)
     return true
 end
@@ -828,6 +842,55 @@ end)
 ---@return string? error
 exports('removeDoor', function(id) if not databaseReady then return false end; return deleteDoor(id) end)
 
+exports('RegisterDoorPolicy', function(id, callback)
+    local door, owner = getDoor(id), GetInvokingResource() or RESOURCE
+    if not door or not QB.compat.isCallable(callback) then return false, 'Door and callable policy are required.' end
+    if door.policyOwner and door.policyOwner ~= owner then return false, 'Door policy belongs to another resource.' end
+    local first = not door.policyOwner
+    local raw = DoorlockSchema.forNetwork(door)
+    raw.policyOwner = owner
+    local saved, err = persistDoor(id, raw)
+    if not saved then
+        if first then door.policyOwner = owner; setDoorState(id, true, nil) end
+        return false, err
+    end
+    installDoor(id, raw, true)
+    doorPolicies[id] = { owner = owner, callback = callback }
+    if first then setDoorState(id, true, nil) end
+    return true
+end)
+
+exports('ClearDoorPolicy', function(id)
+    local door = getDoor(id)
+    if not door or door.policyOwner ~= (GetInvokingResource() or RESOURCE) then return false, 'Door policy is not owned by this resource.' end
+    doorPolicies[id] = nil
+    setDoorState(id, true, nil)
+    return true
+end)
+
+-- Explicit unlinking restores the door's original permissions; provider loss
+-- uses ClearDoorPolicy instead and keeps the persisted boundary closed.
+exports('ReleaseDoorPolicy', function(id)
+    local door = getDoor(id)
+    if not door or door.policyOwner ~= (GetInvokingResource() or RESOURCE) then return false, 'Door policy is not owned by this resource.' end
+    local raw = DoorlockSchema.forNetwork(door)
+    raw.policyOwner = nil
+    local saved, err = persistDoor(id, raw, true)
+    if not saved then return false, err end
+    doorPolicies[id] = nil
+    installDoor(id, raw, true)
+    return true
+end)
+
+AddEventHandler('onResourceStop', function(name)
+    for id, door in pairs(doors) do
+        if door.policyOwner == name then
+            doorPolicies[id] = nil
+            setDoorState(id, true, nil)
+        end
+    end
+end)
+
 ---@return integer? imported
 ---@return integer|string skippedOrError
 exports('importOxDoors', importOxDoors)
@@ -841,7 +904,7 @@ for id, raw in pairs(Config.Doors) do
     assert(type(id) == 'string', 'qbdoorlock Config.Doors keys must be strings.')
     local normalized, err = DoorlockSchema.normalize(raw, Config.InteractionDistance)
     assert(normalized, ('Invalid qbdoorlock door %s: %s'):format(id, err))
-    configuredIds[id], doors[id], states[id] = true, normalized, normalized.locked
+    configuredIds[id], doors[id], states[id] = true, normalized, normalized.policyOwner and true or normalized.locked
 end
 
 CreateThread(function()
@@ -859,7 +922,7 @@ CreateThread(function()
                 doors[row.id], states[row.id] = nil, nil
             else
                 local door, err = DoorlockSchema.normalize(raw, Config.InteractionDistance)
-                if door then doors[row.id], states[row.id] = door, door.locked
+                if door then doors[row.id], states[row.id] = door, door.policyOwner and true or door.locked
                 else print(('^3[qbdoorlock]^7 skipped invalid stored door %s: %s'):format(row.id, err)) end
             end
         else

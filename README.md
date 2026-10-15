@@ -12,6 +12,24 @@ notifications, timers, configuration, and SQL. qbcore is used only for player,
 job, gang, and inventory data, which are framework domains qblib intentionally
 does not own.
 
+## Property policies
+
+Server resources can call `RegisterDoorPolicy(id, callback)` to attach an
+authoritative policy to an existing stable door ID. It returns `true` or
+`false, error`; the callback receives `(source, id, context)` with `lockpick`,
+`authorised`, and `door` fields and must return `true`. For protected doors the
+policy has the final decision, including legacy hook grants. Linked protected
+doors also require approval. Unprotected doors retain the existing grant-only
+hook behavior.
+
+The invoking resource owns the persisted policy marker. Stopping the provider
+locks affected doors, and restored doors remain locked until re-registration.
+`ClearDoorPolicy(id)` removes the callback while retaining this closed boundary.
+`ReleaseDoorPolicy(id)` explicitly and durably unlinks the owner's policy,
+restoring the door's legacy permissions without deleting the door. Both return
+`true` or `false, error` and reject other providers. Confirmed state changes
+continue to emit `qbdoorlock:stateChanged(source, id, locked, usedItem)`.
+
 ## Install
 
 The test server already starts `qbdoorlock` after `qblib`, `qbsql`, and
@@ -237,9 +255,8 @@ exports.qbdoorlock:removeHook(hookId)
 
 ## Tests
 
-Run the plain-Lua suite from this resource directory (it covers the schema, the server,
-the database layer, the client contract and the creator screen):
+Run the plain-Lua property-policy suite from this resource directory:
 
 ```sh
-test/run.sh
+lua test/housing.lua
 ```

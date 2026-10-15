@@ -228,6 +228,7 @@ function DoorlockSchema.normalize(raw, fallbackDistance)
     result.unlockSound = trimmed(raw.unlockSound, 96)
     result.lockSoundSet = trimmed(raw.lockSoundSet, 96)
     result.unlockSoundSet = trimmed(raw.unlockSoundSet, 96)
+    result.policyOwner = trimmed(raw.policyOwner, 64)
     return result
 end
 
