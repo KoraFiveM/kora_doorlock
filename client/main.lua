@@ -143,7 +143,7 @@ local function pickDoor(id)
 end
 
 local function registerTargetModel(model)
-    if targetModels[model] or GetResourceState('qbtarget') ~= 'started' then pendingTargetModels[model] = true; return end
+    if targetModels[model] or GetResourceState('kora_target') ~= 'started' then pendingTargetModels[model] = true; return end
     local ok, targetId = pcall(QB.interact.addModel, model, {
         {
             label = translate('pick_lock'), icon = 'LockKeyhole', distance = 1.5,
@@ -342,7 +342,7 @@ CreateThread(function()
     end
 end)
 
-AddEventHandler('onClientResourceStart', function(resourceName) if resourceName == 'qbtarget' then registerPendingTargets() end end)
+AddEventHandler('onClientResourceStart', function(resourceName) if resourceName == 'kora_target' then registerPendingTargets() end end)
 
 ---@param id string
 ---@return boolean? locked

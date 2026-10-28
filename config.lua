@@ -30,8 +30,8 @@ Config.InteractionDistance = 1.8
 Config.DefaultAutoLock = nil
 Config.Debug = false
 
--- qblib owns all generic infrastructure. qbcore is consulted only for the
--- player, job, gang, and inventory domains that qblib deliberately does not
+-- kora_lib owns all generic infrastructure. kora_core is consulted only for the
+-- player, job, gang, and inventory domains that kora_lib deliberately does not
 -- own. These switches mirror ox_doorlock's presentation and access options.
 Config.Notify = false
 Config.DrawTextUI = true
@@ -51,7 +51,7 @@ Config.DefaultSounds = {
 }
 
 -- Opens the AppShell management dashboard. This is restricted to players with
--- the configured qblib permission; it is intentionally separate from normal
+-- the configured kora_lib permission; it is intentionally separate from normal
 -- door access rules so staff can recover or manage any configured door.
 Config.AdminPermission = 'admin'
 Config.AdminPermissionPrefix = 'qbcore'
@@ -59,7 +59,7 @@ Config.AdminCommand = 'doorlocks'
 Config.CreateCommand = 'adddoor'
 Config.ImportCommand = 'importoxdoors'
 
--- Registers this resource-owned configuration with qblib without changing its public Config table.
+-- Registers this resource-owned configuration with kora_lib without changing its public Config table.
 if QB and QB.config and QB.config.adopt then
     Config.Doors = QB.config.map(Config.Doors, QB.config.object({}), {
         label = 'Authored doors',

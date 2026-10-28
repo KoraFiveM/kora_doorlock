@@ -1,4 +1,4 @@
--- The door lock creator. It works like the qbcrafting creator: a grid of doors,
+-- The door lock creator. It works like the kora_crafting creator: a grid of doors,
 -- a Create new door button, and one page per door with its own forms and cards.
 -- Categories are optional: a category (a building, say) holds default settings for new doors and places
 -- doors in bulk as category-1, category-2 ... Each door keeps its own copy, so it can still be changed alone.

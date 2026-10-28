@@ -2,20 +2,22 @@ fx_version 'cerulean'
 game 'gta5'
 lua54 'yes'
 
-name 'qbdoorlock'
+name 'kora_doorlock'
+-- Keep the legacy resource name resolvable for exports['qbdoorlock'] callers.
+provide 'qbdoorlock'
 author 'qbcore2'
 description 'Config-driven, server-authoritative door locks with an in-game creator, built with qblib'
 version '2.0.0'
 
 dependencies {
-    'qblib',
-    'qbcore',
-    'qbsql',
+    'kora_lib',
+    'kora_core',
+    'kora_sql',
 }
 
 shared_scripts {
-    '@qblib/init.lua',
-    '@qbsql/init.lua',
+    '@kora_lib/init.lua',
+    '@kora_sql/init.lua',
     'types.lua',
     'config.lua',
     'shared/schema.lua',

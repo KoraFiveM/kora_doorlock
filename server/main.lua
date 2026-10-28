@@ -23,7 +23,7 @@ local function getDoor(id)
 end
 
 local function getPlayer(source)
-    local ok, player = pcall(function() return exports.qbcore:getPlayer(source) end)
+    local ok, player = pcall(function() return exports.kora_core:getPlayer(source) end)
     return ok and type(player) == 'table' and player or nil
 end
 
@@ -60,7 +60,7 @@ end
 local function findItem(source, requirements)
     if type(requirements) ~= 'table' then return nil end
     for _, requirement in ipairs(requirements) do
-        local ok, items = pcall(function() return exports.qbcore:getItemsByName(source, requirement.name) end)
+        local ok, items = pcall(function() return exports.kora_core:getItemsByName(source, requirement.name) end)
         if ok and type(items) == 'table' then
             for _, item in pairs(items) do
                 if type(item) == 'table' and (tonumber(item.amount) or 0) > 0
@@ -75,7 +75,7 @@ end
 local function removeItem(source, requirement, slot)
     if not requirement then return false end
     local ok, removed = pcall(function()
-        return exports.qbcore:removeItem(source, requirement.name, 1, slot, 'qbdoorlock')
+        return exports.kora_core:removeItem(source, requirement.name, 1, slot, 'qbdoorlock')
     end)
     return ok and removed == true
 end

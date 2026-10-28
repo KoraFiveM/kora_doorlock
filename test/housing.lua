@@ -1,5 +1,5 @@
-local H = dofile('../qbcore/test/harness.lua')
-local jsonTools = dofile('../qbcore/test/mocks.lua')
+local H = dofile('../kora_core/test/harness.lua')
+local jsonTools = dofile('../kora_core/test/mocks.lua')
 local json = { encode = jsonTools.stableEncode, decode = jsonTools.simpleDecode }
 
 local function setup(stored, linked)
@@ -9,12 +9,12 @@ local function setup(stored, linked)
     env.Config = { Doors = { test = { label = 'Test', model = 123, coords = { x = 1, y = 2, z = 3 }, locked = true } }, InteractionDistance = 2 }
     if linked then env.Config.Doors.partner = { label = 'Partner', model = 124, coords = { x = 2, y = 2, z = 3 }, locked = true } end
     env.vector3 = function(x, y, z) return { x = x, y = y, z = z } end
-    env.GetCurrentResourceName = function() return 'qbdoorlock' end
+    env.GetCurrentResourceName = function() return 'kora_doorlock' end
     env.GetInvokingResource = function() return f.caller end
     env.CreateThread = function(fn) f.threads[#f.threads + 1] = fn end
     env.AddEventHandler = function(name, fn) f.events[name] = fn end
     env.TriggerEvent = function() end
-    env.exports = setmetatable({ qbcore = { getPlayer = function() return { citizenid = 'CID1' } end } }, {
+    env.exports = setmetatable({ kora_core = { getPlayer = function() return { citizenid = 'CID1' } end } }, {
         __call = function(_, name, fn) f.exports[name] = fn end,
     })
     env.QB = {

@@ -1,4 +1,4 @@
-# qbdoorlock
+# kora_doorlock
 
 A server-authoritative, qblib-native door lock resource with the feature set of
 `ox_doorlock`. It supports single and double doors, persistent in-game editing,
@@ -6,10 +6,10 @@ passcodes, jobs and gangs, character IDs, metadata-aware key items, consumable
 keys, lockpicking, per-door ACEs, automatic doors, movement rates, hold-open,
 hidden indicators, sounds, and auto-locking.
 
-qblib owns the resource's commands, permissions, protected events, callbacks,
+kora_lib owns the resource's commands, permissions, protected events, callbacks,
 minigames, targeting facade, keybinds, zones, raycasts, streaming, sounds, UI,
-notifications, timers, configuration, and SQL. qbcore is used only for player,
-job, gang, and inventory data, which are framework domains qblib intentionally
+notifications, timers, configuration, and SQL. kora_core is used only for player,
+job, gang, and inventory data, which are framework domains kora_lib intentionally
 does not own.
 
 ## Property policies
@@ -32,11 +32,11 @@ continue to emit `qbdoorlock:stateChanged(source, id, locked, usedItem)`.
 
 ## Install
 
-The test server already starts `qbdoorlock` after `qblib`, `qbsql`, and
-`qbcore`. The database tables are created through qbsql migrations at startup.
+The test server already starts `kora_doorlock` after `kora_lib`, `kora_sql`, and
+`kora_core`. The database tables are created through kora_sql migrations at startup.
 
-`qbtarget` is optional. If it starts, lockpickable door objects receive a
-qblib interaction option. The `pickClosestDoor` client export remains available
+`kora_target` is optional. If it starts, lockpickable door objects receive a
+kora_lib interaction option. The `pickClosestDoor` client export remains available
 without a target resource.
 
 ## Door creator
@@ -45,7 +45,7 @@ Players with the permission selected by `Config.AdminPermission` and
 `Config.AdminPermissionPrefix` (`qbcore.admin` by default) can use:
 
 - `/doorlocks` (or `/doorlocks closest`) to open the creator. It works like the
-  qbcrafting creator: a grid of doors you can search, a *Create new door* button
+  kora_crafting creator: a grid of doors you can search, a *Create new door* button
   and one page per door.
 - `/adddoor` to jump straight to *Create new door*.
 - `/importoxdoors` to import an existing `ox_doorlock` database table. Imported
@@ -113,7 +113,7 @@ doors placed afterwards. The door ID stays `police-N` whatever the door is renam
 
 ## Configuration
 
-The canonical qbdoorlock shape is:
+The canonical kora_doorlock shape is:
 
 ```lua
 Config.Doors['city-hall-office'] = {
@@ -180,8 +180,8 @@ For parity when importing definitions, these ox-style aliases are accepted:
 
 ox-style difficulty arrays (`easy`, `medium`, `hard`, or custom
 `areaSize`/`speedMultiplier` entries) are also accepted and translated onto
-qblib's server-validated lockpick game. New definitions should use the native
-qblib options shown above.
+kora_lib's server-validated lockpick game. New definitions should use the native
+kora_lib options shown above.
 
 ## ACE access
 
@@ -203,26 +203,26 @@ administrative permission (`qbcore.admin` by default).
 Client exports:
 
 ```lua
-exports.qbdoorlock:useClosestDoor()
-exports.qbdoorlock:pickClosestDoor()
-local door = exports.qbdoorlock:getClosestDoor()
-local id = exports.qbdoorlock:getClosestDoorId()
-local id = exports.qbdoorlock:getDoorIdFromEntity(entity)
-local locked = exports.qbdoorlock:getDoorState('city-hall-office')
+exports.kora_doorlock:useClosestDoor()
+exports.kora_doorlock:pickClosestDoor()
+local door = exports.kora_doorlock:getClosestDoor()
+local id = exports.kora_doorlock:getClosestDoorId()
+local id = exports.kora_doorlock:getDoorIdFromEntity(entity)
+local locked = exports.kora_doorlock:getDoorState('city-hall-office')
 ```
 
 Server exports:
 
 ```lua
-local door = exports.qbdoorlock:getDoor('city-hall-office')
-local door = exports.qbdoorlock:getDoorFromName('City Hall Office')
-local allDoors = exports.qbdoorlock:getAllDoors()
+local door = exports.kora_doorlock:getDoor('city-hall-office')
+local door = exports.kora_doorlock:getDoorFromName('City Hall Office')
+local allDoors = exports.kora_doorlock:getAllDoors()
 
-exports.qbdoorlock:setDoorState('city-hall-office', false) -- also accepts 0/1
-exports.qbdoorlock:editDoor('city-hall-office', { autoLock = 30000 })
-local id = exports.qbdoorlock:createDoor(definition)
-exports.qbdoorlock:removeDoor(id)
-local imported, skipped = exports.qbdoorlock:importOxDoors()
+exports.kora_doorlock:setDoorState('city-hall-office', false) -- also accepts 0/1
+exports.kora_doorlock:editDoor('city-hall-office', { autoLock = 30000 })
+local id = exports.kora_doorlock:createDoor(definition)
+exports.kora_doorlock:removeDoor(id)
+local imported, skipped = exports.kora_doorlock:importOxDoors()
 ```
 
 The local server event form is also available:
@@ -246,11 +246,11 @@ end)
 Authorization hooks can grant access for custom systems:
 
 ```lua
-local hookId = exports.qbdoorlock:registerHook('doorAuthorization', function(payload)
+local hookId = exports.kora_doorlock:registerHook('doorAuthorization', function(payload)
     if payload.door.label == 'VIP Room' and isVip(payload.source) then return true end
 end, { nameFilter = '^VIP' })
 
-exports.qbdoorlock:removeHook(hookId)
+exports.kora_doorlock:removeHook(hookId)
 ```
 
 ## Tests
