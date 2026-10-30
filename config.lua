@@ -45,6 +45,7 @@ Config.LockpickItems = { 'lockpick' }
 Config.CanPickUnlockedDoors = false
 Config.LockpickDifficulty = { 'easy', 'easy', 'medium' }
 Config.LockpickBreakChance = { success = 1, failure = 20 }
+Config.lockpickRateLimit = { max = 4, window = 10000 }
 Config.DefaultSounds = {
     locked = { name = 'Remote_Control_Close', set = 'PI_Menu_Sounds' },
     unlocked = { name = 'Remote_Control_Open', set = 'PI_Menu_Sounds' },
@@ -70,5 +71,17 @@ if QB and QB.config and QB.config.adopt then
             label = 'Default automatic lock delay',
             description = 'Optionally sets the default number of milliseconds an unlocked door waits before locking itself. Leave this unset to disable automatic locking unless an individual door supplies its own autoLock value.',
         })
+    Config.lockpickRateLimit = QB.config.object({
+        max = QB.config.integer(Config.lockpickRateLimit.max, {
+            min = 1,
+            label = 'Lockpick starts per window',
+            description = 'Sets how many lockpick attempts one player may start during the rate-limit window. Further attempts are refused until the window passes.',
+        }),
+        window = QB.config.integer(Config.lockpickRateLimit.window, {
+            min = 1,
+            label = 'Lockpick rate-limit window',
+            description = 'Sets the rolling window in milliseconds used to count one player\'s lockpick starts.',
+        }),
+    }, { advanced = true })
     Config = QB.config.adopt(Config)
 end

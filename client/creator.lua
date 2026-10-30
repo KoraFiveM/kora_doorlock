@@ -658,7 +658,7 @@ local function setData(snapshot)
 end
 
 local function change(callback, ...)
-    local result, err = QB.callback.trigger(callback, ...)
+    local result, err = DoorlockClient.trigger(callback, ...)
     if not result then return nil, err end
     setData(result)
     revision = revision + 1
@@ -825,7 +825,7 @@ local function placeCategoryDoors(categoryId)
 
             local geometry, cancelledAt = captureGeometry(double, hint, true)
             if geometry then
-                local result, err = QB.callback.trigger('qbdoorlock:server:managementCategoryDoorCreated', categoryId, geometry)
+                local result, err = DoorlockClient.trigger('qbdoorlock:server:managementCategoryDoorCreated', categoryId, geometry)
                 if result then
                     setData(result.snapshot)
                     revision = revision + 1
@@ -878,7 +878,7 @@ local function runTool(tool)
     definition.label = tool.name
     applyGeometry(definition, geometry)
 
-    local result, err = QB.callback.trigger('qbdoorlock:server:managementDoorCreated', definition, tool.sourceDoorId)
+    local result, err = DoorlockClient.trigger('qbdoorlock:server:managementDoorCreated', definition, tool.sourceDoorId)
     if not result then return toast(err or NO_ANSWER) end
 
     setData(result.doors)
@@ -1107,7 +1107,7 @@ local function categoryAction(actionId, values)
     if actionId == 'cat:new' then
         local name = askCategoryName()
         if not name then return refresh() end
-        local result, err = QB.callback.trigger('qbdoorlock:server:managementCategoryCreated', name)
+        local result, err = DoorlockClient.trigger('qbdoorlock:server:managementCategoryCreated', name)
         if not result then return fail(err or NO_ANSWER) end
         setData(result.snapshot)
         return openCategory(result.id, notice('Category created. Set its default settings, then place doors.'))
@@ -1183,7 +1183,7 @@ QB.nui.registerApp({
 ---@param options? { closestFirst?: boolean, create?: boolean }
 local function open(options)
     options = options or {}
-    local result, err = QB.callback.trigger('qbdoorlock:server:managementSnapshotRequested')
+    local result, err = DoorlockClient.trigger('qbdoorlock:server:managementSnapshotRequested')
     if not result then
         toast(err or 'Admin permission required.')
         return

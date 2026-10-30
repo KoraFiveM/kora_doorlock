@@ -5,6 +5,7 @@
   "pick_lock": "Pick lock",
   "select_second": "Aim at the second door",
   "cannot_pick": "That door cannot be picked.",
+  "slow_down": "Slow down, try again in %{seconds}s.",
   "lock_resisted": "The lock resisted your attempt.",
   "lockpick_broke": "Your lockpick broke.",
   "access_denied": "You do not have access to this door.",

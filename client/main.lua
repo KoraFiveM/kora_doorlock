@@ -13,6 +13,16 @@ local function notify(message, notificationType)
     QB.notify.send({ title = translate('title'), message = message, type = notificationType or 'info' })
 end
 
+-- kora_lib re-raises a rate-limited callback as a script error. Callers here treat it as a
+-- normal refusal, so catch it and return nil plus a message the player can read.
+local function trigger(name, ...)
+    local ok, result, err = pcall(QB.callback.trigger, name, ...)
+    if ok then return result, err end
+    local retry = tonumber(tostring(result):match('retry in (%d+)ms'))
+    if retry then return nil, translate('slow_down', { seconds = math.ceil(retry / 1000) }) end
+    return nil, translate('cannot_pick')
+end
+
 local function doorLeaves(door)
     return door.doors or { { model = door.model, coords = door.coords, heading = door.heading } }
 end
@@ -125,7 +135,7 @@ local function pickDoor(id)
     if not door or not door.lockpick or (not Config.CanPickUnlockedDoors and not door.locked) then return false end
     pickingLock = true
     CreateThread(function()
-        local authorization, err = QB.callback.trigger('qbdoorlock:server:lockpickStarted', id)
+        local authorization, err = trigger('qbdoorlock:server:lockpickStarted', id)
         if not authorization then pickingLock = false; return notify(err or translate('cannot_pick'), 'error') end
         local playerPed = QB.cache.ped()
         TaskTurnPedToFaceCoord(playerPed, door.coords.x, door.coords.y, door.coords.z, 1000)
@@ -248,6 +258,7 @@ end
 -- runtime through this one table instead of sharing locals.
 DoorlockClient = {
     notify = notify,
+    trigger = trigger,
     translate = translate,
     targetedLeaf = targetedLeaf,
     selectLeaf = selectLeaf,
@@ -279,7 +290,7 @@ CreateThread(function()
             if sprite.dict and QB.stream.loadTextureDict(sprite.dict) then spriteDicts[sprite.dict] = true end
         end
     end
-    local definitions, serverStates = QB.callback.trigger('qbdoorlock:server:doorsRequested')
+    local definitions, serverStates = trigger('qbdoorlock:server:doorsRequested')
     if type(definitions) ~= 'table' then return notify(translate('definitions_failed'), 'error') end
     for id, definition in pairs(definitions) do setupDoor(id, definition, type(serverStates) == 'table' and serverStates[id] == true) end
 end)

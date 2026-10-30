@@ -659,6 +659,15 @@ QB.callback.register('qbdoorlock:server:managementDoorsUnlinked', function(sourc
     return managementSnapshot(source)
 end, { rateLimit = { max = 10, window = 10000 } })
 
+-- Read at registration so config edits apply; fall back to the original limit if missing or invalid.
+local function lockpickRateLimit()
+    local limit = Config.lockpickRateLimit
+    if type(limit) ~= 'table' or type(limit.max) ~= 'number' or type(limit.window) ~= 'number' then
+        return { max = 4, window = 10000 }
+    end
+    return { max = limit.max, window = limit.window }
+end
+
 QB.callback.register('qbdoorlock:server:lockpickStarted', function(source, id)
     local door = getDoor(id)
     if not door or not door.lockpick or not isNearDoor(source, door) then return nil, 'That door cannot be picked.' end
@@ -669,7 +678,7 @@ QB.callback.register('qbdoorlock:server:lockpickStarted', function(source, id)
     if not authorization then return nil, 'The lockpick challenge could not start.' end
     pendingLockpicks[source] = { id = id, authorization = authorization, requirement = requirement, slot = slot }
     return authorization
-end, { rateLimit = { max = 4, window = 10000 } })
+end, { rateLimit = lockpickRateLimit() })
 
 QB.events.register('qbdoorlock:server:doorToggled', function(source, id)
     local door = getDoor(id)

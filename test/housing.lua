@@ -2,11 +2,11 @@ local H = dofile('../kora_core/test/harness.lua')
 local jsonTools = dofile('../kora_core/test/mocks.lua')
 local json = { encode = jsonTools.stableEncode, decode = jsonTools.simpleDecode }
 
-local function setup(stored, linked)
-    local f = { exports = {}, callbacks = {}, actions = {}, events = {}, threads = {}, caller = 'housing' }
+local function setup(stored, linked, rateLimit)
+    local f = { exports = {}, callbacks = {}, callbackOptions = {}, actions = {}, events = {}, threads = {}, caller = 'housing' }
     local env = {}; for key, value in pairs(_G) do env[key] = value end
     env.json, env.DoorlockSchema = json, nil
-    env.Config = { Doors = { test = { label = 'Test', model = 123, coords = { x = 1, y = 2, z = 3 }, locked = true } }, InteractionDistance = 2 }
+    env.Config = { Doors = { test = { label = 'Test', model = 123, coords = { x = 1, y = 2, z = 3 }, locked = true } }, InteractionDistance = 2, lockpickRateLimit = rateLimit }
     if linked then env.Config.Doors.partner = { label = 'Partner', model = 124, coords = { x = 2, y = 2, z = 3 }, locked = true } end
     env.vector3 = function(x, y, z) return { x = x, y = y, z = z } end
     env.GetCurrentResourceName = function() return 'kora_doorlock' end
@@ -22,7 +22,7 @@ local function setup(stored, linked)
         permissions = { hasPermission = function() return false end },
         compat = { isCallable = function(value) return type(value) == 'function' end },
         resources = { serverRegistry = function() return { track = function() end, untrack = function() end } end },
-        callback = { register = function(name, fn) f.callbacks[name] = fn end },
+        callback = { register = function(name, fn, options) f.callbacks[name] = fn; f.callbackOptions[name] = options end },
         events = { register = function(name, fn) f.actions[name] = fn end, push = function() end },
         commands = { add = function() end }, distance = { player = function() return true end },
         notify = { send = function() end }, timers = { clearTimeout = function() end },
@@ -117,6 +117,14 @@ H.test('explicit owner unlink restores legacy access without deleting the door',
     assert(f.exports.ReleaseDoorPolicy('test'))
     H.assertEqual(json.decode(f.saved).policyOwner, nil)
     f.toggle(); H.assertEqual(f.exports.getDoorState('test'), false)
+end)
+
+H.test('lockpick callback uses Config.lockpickRateLimit and falls back to the original limit', function()
+    local configured = setup(nil, nil, { max = 9, window = 3000 })
+    local options = configured.callbackOptions['qbdoorlock:server:lockpickStarted']
+    H.assertEqual(options.rateLimit.max, 9); H.assertEqual(options.rateLimit.window, 3000)
+    local fallback = setup().callbackOptions['qbdoorlock:server:lockpickStarted']
+    H.assertEqual(fallback.rateLimit.max, 4); H.assertEqual(fallback.rateLimit.window, 10000)
 end)
 
 H.report('qbdoorlock property policies')
