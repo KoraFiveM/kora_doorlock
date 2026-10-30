@@ -27,29 +27,6 @@ local function getPlayer(source)
     return ok and type(player) == 'table' and player or nil
 end
 
-local function gradeLevel(role)
-    if type(role) ~= 'table' then return 0 end
-    if type(role.grade) == 'table' then return tonumber(role.grade.level) or 0 end
-    return tonumber(role.grade) or tonumber(role.gradeLevel) or 0
-end
-
-local function matchesGroup(player, groups)
-    if type(player) ~= 'table' or type(groups) ~= 'table' then return false end
-    for name, minimumGrade in pairs(groups) do
-        for _, role in ipairs({ player.job, player.gang }) do
-            if role and role.name == name and gradeLevel(role) >= minimumGrade then return true end
-        end
-    end
-    return false
-end
-
-local function matchesCharacter(player, characters)
-    if type(player) ~= 'table' or type(characters) ~= 'table' then return false end
-    local citizenId = tostring(player.citizenid or player.charid or '')
-    for _, character in ipairs(characters) do if tostring(character) == citizenId then return true end end
-    return false
-end
-
 local function metadataMatches(actual, required)
     if required == nil then return true end
     actual = type(actual) == 'table' and actual or {}
@@ -158,16 +135,20 @@ local function hasAccess(source, id, door, lockpick, skipLinked)
         for _, name in ipairs(Config.LockpickItems or {}) do requirements[#requirements + 1] = { name = name } end
         usedRequirement, usedSlot = findItem(source, requirements)
         authorised = usedRequirement ~= nil
-    elseif not authorised and player then
-        authorised = matchesCharacter(player, door.characters) or matchesGroup(player, door.groups)
-        if not authorised then
+    else
+        local facts = {
+            ace = authorised, admin = not authorised and isAdmin(source),
+            character = DoorlockAccess.matchesCharacter(player, door.characters),
+            group = DoorlockAccess.matchesGroup(player, door.groups),
+            restricted = DoorlockAccess.isRestricted(door),
+        }
+        if player and not facts.admin and not facts.ace and not facts.character and not facts.group then
             usedRequirement, usedSlot = findItem(source, door.items)
-            authorised = usedRequirement ~= nil
+            facts.item = usedRequirement ~= nil
         end
+        authorised = DoorlockAccess.decide(facts, Config.UnrestrictedDoorsOpenToAll)
     end
 
-    local restricted = door.passcode or door.characters or door.groups or door.items
-    if not lockpick and not authorised and not restricted then authorised = true end
     if not lockpick and not authorised and door.passcode then
         local supplied = QB.callback.trigger(source, 'qbdoorlock:client:passcodeRequested', door.label)
         authorised = type(supplied) == 'string' and supplied == door.passcode

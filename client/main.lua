@@ -41,6 +41,37 @@ local function stateText(door)
     return door.locked and 'unlock_door' or 'lock_door'
 end
 
+local dimensionCentres = {}
+
+-- Where the lock icon is drawn. A single door's origin is its hinge, so the icon is moved to the middle of
+-- the model (using the live entity when streamed in, else the saved heading). A double door's coords are
+-- already halfway between its two leaves.
+local function iconCoords(door)
+    local offset = Config.DrawSpriteOffset
+    local coords = door.coords
+    if Config.DrawSpriteCentered ~= false and not door.doors then
+        local centre = dimensionCentres[door.model]
+        if centre == nil then
+            local min, max = GetModelDimensions(door.model)
+            centre = min and max and { x = (min.x + max.x) / 2, y = (min.y + max.y) / 2, z = (min.z + max.z) / 2 } or false
+            dimensionCentres[door.model] = centre
+        end
+        if centre then
+            local entity = door.entities and door.entities[1]
+            if entity and DoesEntityExist(entity) then
+                coords = GetOffsetFromEntityInWorldCoords(entity, centre.x, centre.y, centre.z)
+            elseif door.heading then
+                local radians = math.rad(door.heading)
+                local sine, cosine = math.sin(radians), math.cos(radians)
+                coords = vector3(coords.x + centre.x * cosine - centre.y * sine,
+                    coords.y + centre.x * sine + centre.y * cosine, coords.z + centre.z)
+            end
+        end
+    end
+    if offset then coords = vector3(coords.x + (offset.x or 0.0), coords.y + (offset.y or 0.0), coords.z + (offset.z or 0.0)) end
+    return coords
+end
+
 local function hidePrompt()
     if prompt then QB.textui.hide(prompt); prompt = nil end
 end
@@ -67,13 +98,15 @@ local function clearDoorEntities(door)
     door.entities = {}
 end
 
-local function removeDoor(id)
+local function removeDoor(id, keepSystem)
     local door = doors[id]
     if not door then return end
     if door.interactionZone then door.interactionZone.remove() end
     if door.streamZone then door.streamZone.remove() end
     clearDoorEntities(door)
-    for index = 1, #doorLeaves(door) do RemoveDoorFromSystem(doorHash(id, index)) end
+    if not keepSystem then
+        for index = 1, #doorLeaves(door) do RemoveDoorFromSystem(doorHash(id, index)) end
+    end
     activeDoors[id], streamedDoors[id], doors[id] = nil, nil, nil
     if nearbyDoor == id then nearbyDoor = nil; hidePrompt() end
 end
@@ -84,6 +117,33 @@ local function playDoorSound(door, locked)
     local set = locked and door.lockSoundSet or door.unlockSoundSet
     name, set = name or (fallback and fallback.name), set or (fallback and fallback.set)
     if name and set then QB.sound.playFromCoords(door.coords, name, set, { range = 20.0, releaseAfter = 3000 }) end
+end
+
+-- A door registered or re-registered in the same frame can miss its lock state, so for a few seconds the
+-- state is re-asserted (and the door re-added if the system lost it) until it sticks.
+local ENFORCE_MS = 5000
+
+local function enforceState(id)
+    local door = doors[id]
+    if not door then return end
+    door.enforceToken = (door.enforceToken or 0) + 1
+    local token = door.enforceToken
+    CreateThread(function()
+        local deadline = GetGameTimer() + ENFORCE_MS
+        while GetGameTimer() < deadline do
+            if doors[id] ~= door or door.enforceToken ~= token then return end
+            local target = door.locked and 1 or 0
+            for index, leaf in ipairs(doorLeaves(door)) do
+                local hash = doorHash(id, index)
+                if not IsDoorRegisteredWithSystem(hash) then
+                    AddDoorToSystem(hash, leaf.model, leaf.coords.x, leaf.coords.y, leaf.coords.z, false, false, false)
+                end
+                if DoorSystemGetDoorState(hash) ~= target then DoorSystemSetDoorState(hash, target, false, false) end
+                if door.locked and not IsDoorClosed(hash) then DoorSystemSetDoorState(hash, 4, false, false) end
+            end
+            Wait(100)
+        end
+    end)
 end
 
 local function applyState(id, locked, source, silent)
@@ -100,17 +160,7 @@ local function applyState(id, locked, source, silent)
     if changed and not silent and QB.distance.player(door.coords, 20.0) then playDoorSound(door, door.locked) end
     if nearbyDoor == id then updatePrompt() end
 
-    if door.locked then
-        CreateThread(function()
-            local deadline = GetGameTimer() + 5000
-            while GetGameTimer() < deadline do
-                local closed = true
-                for index in ipairs(doorLeaves(door)) do if not IsDoorClosed(doorHash(id, index)) then closed = false; break end end
-                if closed then return end
-                Wait(0)
-            end
-        end)
-    end
+    enforceState(id)
 end
 
 local function getDoorIdFromEntity(entity)
@@ -169,16 +219,30 @@ local function registerPendingTargets()
     for model in pairs(pendingTargetModels) do registerTargetModel(model) end
 end
 
+local function sameLeaves(a, b)
+    local first, second = doorLeaves(a), doorLeaves(b)
+    if #first ~= #second then return false end
+    for index, leaf in ipairs(first) do
+        if leaf.model ~= second[index].model or #(leaf.coords - second[index].coords) > 0.01 then return false end
+    end
+    return true
+end
+
 local function setupDoor(id, raw, locked)
     local door, err = DoorlockSchema.normalize(raw, Config.InteractionDistance)
     if not door then return print(('^3[qbdoorlock]^7 rejected client door %s: %s'):format(tostring(id), err)) end
-    removeDoor(id)
+    -- Saving details re-sends the definition. Keep the door-system entry when the doors did not move,
+    -- instead of removing and re-adding the same hash in one frame.
+    local keepSystem = doors[id] ~= nil and sameLeaves(doors[id], door)
+    removeDoor(id, keepSystem)
     door.id, door.locked, door.state, door.maxDistance, door.entities = id, locked == true, locked and 1 or 0, door.distance, {}
     doors[id] = door
     for index, leaf in ipairs(doorLeaves(door)) do
         local hash = doorHash(id, index)
-        AddDoorToSystem(hash, leaf.model, leaf.coords.x, leaf.coords.y, leaf.coords.z, false, false, false)
-        DoorSystemSetDoorState(hash, 4, false, false)
+        if not keepSystem or not IsDoorRegisteredWithSystem(hash) then
+            AddDoorToSystem(hash, leaf.model, leaf.coords.x, leaf.coords.y, leaf.coords.z, false, false, false)
+            DoorSystemSetDoorState(hash, 4, false, false)
+        end
         DoorSystemSetDoorState(hash, door.locked and 1 or 0, false, false)
         if door.doorRate or not door.automatic then DoorSystemSetAutomaticRate(hash, door.doorRate or 10.0, false, false) end
         if door.holdOpen then DoorSystemSetHoldOpen(hash, not door.locked) end
@@ -195,6 +259,7 @@ local function setupDoor(id, raw, locked)
         onExit = function() streamedDoors[id] = nil; clearDoorEntities(door) end,
     })
     registerPendingTargets()
+    enforceState(id)
 end
 
 local function targetedLeaf()
@@ -314,7 +379,8 @@ CreateThread(function()
                     local sprite = Config.DrawSprite[door.locked and 'locked' or 'unlocked']
                     if sprite then
                         local color = sprite.color or { 255, 255, 255, 100 }
-                        SetDrawOrigin(door.coords.x, door.coords.y, door.coords.z, 0)
+                        local origin = iconCoords(door)
+                        SetDrawOrigin(origin.x, origin.y, origin.z, 0)
                         DrawSprite(sprite.dict, sprite.name, 0.0, 0.0, sprite.width or 0.018, (sprite.height or 0.018) * GetAspectRatio(true), 0.0, color[1], color[2], color[3], color[4])
                         ClearDrawOrigin()
                     end

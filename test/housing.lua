@@ -6,7 +6,8 @@ local function setup(stored, linked, rateLimit)
     local f = { exports = {}, callbacks = {}, callbackOptions = {}, actions = {}, events = {}, threads = {}, caller = 'housing' }
     local env = {}; for key, value in pairs(_G) do env[key] = value end
     env.json, env.DoorlockSchema = json, nil
-    env.Config = { Doors = { test = { label = 'Test', model = 123, coords = { x = 1, y = 2, z = 3 }, locked = true } }, InteractionDistance = 2, lockpickRateLimit = rateLimit }
+    env.Config = { Doors = { test = { label = 'Test', model = 123, coords = { x = 1, y = 2, z = 3 }, locked = true } }, InteractionDistance = 2, lockpickRateLimit = rateLimit,
+        UnrestrictedDoorsOpenToAll = true } -- these policy tests exercise legacy open doors; test/access.lua covers the secure default
     if linked then env.Config.Doors.partner = { label = 'Partner', model = 124, coords = { x = 2, y = 2, z = 3 }, locked = true } end
     env.vector3 = function(x, y, z) return { x = x, y = y, z = z } end
     env.GetCurrentResourceName = function() return 'kora_doorlock' end
@@ -37,6 +38,7 @@ local function setup(stored, linked, rateLimit)
         end },
     }
     assert(loadfile('shared/schema.lua', 't', env))()
+    assert(loadfile('shared/access.lua', 't', env))()
     assert(loadfile('server/main.lua', 't', env))()
     f.threads[1]()
     function f.toggle() f.actions['qbdoorlock:server:doorToggled'](1, 'test') end

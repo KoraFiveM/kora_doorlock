@@ -21,6 +21,7 @@ shared_scripts {
     'types.lua',
     'config.lua',
     'shared/schema.lua',
+    'shared/access.lua',
 }
 
 client_scripts {

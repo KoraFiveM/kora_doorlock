@@ -39,8 +39,15 @@ Config.DrawSprite = {
     unlocked = { dict = 'mpsafecracking', name = 'lock_open', width = 0.018, height = 0.018, color = { 255, 255, 255, 100 } },
     locked = { dict = 'mpsafecracking', name = 'lock_closed', width = 0.018, height = 0.018, color = { 255, 255, 255, 100 } },
 }
+-- DrawSpriteCentered puts the lock icon on the middle of a single door (from its model size) instead of its
+-- hinge; DrawSpriteOffset then shifts it in world metres (x, y, z) if a particular style needs nudging.
+Config.DrawSpriteCentered = true
+Config.DrawSpriteOffset = vector3(0.0, 0.0, 0.0)
 Config.PlayerAceAuthorised = false
 Config.PlayerAcePermission = 'doorlock'
+-- Who may toggle a door that has no groups, characters, items or passcode. false (the secure default) means
+-- only admins and door-specific ACEs can; true restores the older "anyone can use an unrestricted door" behaviour.
+Config.UnrestrictedDoorsOpenToAll = false
 Config.LockpickItems = { 'lockpick' }
 Config.CanPickUnlockedDoors = false
 Config.LockpickDifficulty = { 'easy', 'easy', 'medium' }
@@ -83,5 +90,17 @@ if QB and QB.config and QB.config.adopt then
             description = 'Sets the rolling window in milliseconds used to count one player\'s lockpick starts.',
         }),
     }, { advanced = true })
+    Config.UnrestrictedDoorsOpenToAll = QB.config.boolean(Config.UnrestrictedDoorsOpenToAll, {
+        label = 'Unrestricted doors open to everyone',
+        description = 'When off (recommended), a door with no groups, characters, key items or passcode can only be locked or unlocked by admins and players with a door ACE. Turn on to let any player toggle such doors, as older versions did. Applies the next time someone uses a door.',
+    })
+    Config.DrawSpriteCentered = QB.config.boolean(Config.DrawSpriteCentered, {
+        label = 'Centre lock icon on single doors',
+        description = 'Draws the lock icon at the middle of a single door using its model size instead of at its hinge. Double doors are always drawn halfway between their two leaves. Applies immediately.',
+    })
+    Config.DrawSpriteOffset = QB.config.vector3(Config.DrawSpriteOffset, {
+        label = 'Lock icon offset',
+        description = 'World-space metres added to the lock icon position (x, y, z) after centring. Leave at 0, 0, 0 unless a door style needs the icon nudged. Applies immediately.',
+    })
     Config = QB.config.adopt(Config)
 end
