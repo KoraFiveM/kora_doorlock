@@ -1,6 +1,6 @@
 # kora_doorlock
 
-A server-authoritative, qblib-native door lock resource with the feature set of
+A server-authoritative, kora_lib-native door lock resource with the feature set of
 `ox_doorlock`. It supports single and double doors, persistent in-game editing,
 passcodes, jobs and gangs, character IDs, metadata-aware key items, consumable
 keys, lockpicking, per-door ACEs, automatic doors, movement rates, hold-open,

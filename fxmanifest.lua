@@ -6,7 +6,7 @@ name 'kora_doorlock'
 -- Keep the legacy resource name resolvable for exports['qbdoorlock'] callers.
 provide 'qbdoorlock'
 author 'qbcore2'
-description 'Config-driven, server-authoritative door locks with an in-game creator, built with qblib'
+description 'Config-driven, server-authoritative door locks with an in-game creator, built with kora_lib'
 version '2.0.0'
 
 dependencies {
