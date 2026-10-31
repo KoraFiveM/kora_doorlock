@@ -7,11 +7,11 @@ local hooks, nextHookId = {}, 0
 local doorPolicies = {}
 
 local function translate(key, replacements)
-    return QB.lang(key, replacements)
+    return Kora.lang(key, replacements)
 end
 
 local function isAdmin(source)
-    return QB.permissions.hasPermission(source, Config.AdminPermission or 'admin', Config.AdminPermissionPrefix or 'qbcore')
+    return Kora.permissions.hasPermission(source, Config.AdminPermission or 'admin', Config.AdminPermissionPrefix or 'qbcore')
 end
 
 local function doorLeaves(door)
@@ -57,7 +57,7 @@ local function removeItem(source, requirement, slot)
     return ok and removed == true
 end
 
-local hookOwnership = QB.resources.serverRegistry(function(hookId) hooks[hookId] = nil end)
+local hookOwnership = Kora.resources.serverRegistry(function(hookId) hooks[hookId] = nil end)
 
 local function triggerHooks(event, payload)
     local response
@@ -79,7 +79,7 @@ end
 
 local function registerHook(event, callback, options)
     assert(event == 'doorAuthorization', 'qbdoorlock only supports the doorAuthorization hook.')
-    assert(QB.compat.isCallable(callback), 'qbdoorlock hook callback must be callable.')
+    assert(Kora.compat.isCallable(callback), 'qbdoorlock hook callback must be callable.')
     assert(options == nil or type(options) == 'table', 'qbdoorlock hook options must be a table.')
     if options and options.nameFilter ~= nil then
         assert(type(options.nameFilter) == 'string' and options.nameFilter ~= '', 'qbdoorlock hook nameFilter must be a non-empty Lua pattern.')
@@ -117,14 +117,14 @@ exports('removeHook', removeHook)
 
 local function isNearDoor(source, door)
     local maxDistance = door.distance + 1.0
-    for _, leaf in ipairs(doorLeaves(door)) do if QB.distance.player(source, leaf.coords, maxDistance) then return true end end
+    for _, leaf in ipairs(doorLeaves(door)) do if Kora.distance.player(source, leaf.coords, maxDistance) then return true end end
     return false
 end
 
 local function hasDoorAce(source, id, door)
-    if Config.PlayerAceAuthorised and QB.permissions.hasPermission(source, Config.PlayerAcePermission or 'doorlock') then return true end
-    return QB.permissions.hasPermission(source, id, 'doorlock')
-        or QB.permissions.hasPermission(source, door.label, 'doorlock')
+    if Config.PlayerAceAuthorised and Kora.permissions.hasPermission(source, Config.PlayerAcePermission or 'doorlock') then return true end
+    return Kora.permissions.hasPermission(source, id, 'doorlock')
+        or Kora.permissions.hasPermission(source, door.label, 'doorlock')
 end
 
 local function hasAccess(source, id, door, lockpick, skipLinked)
@@ -150,7 +150,7 @@ local function hasAccess(source, id, door, lockpick, skipLinked)
     end
 
     if not lockpick and not authorised and door.passcode then
-        local supplied = QB.callback.trigger(source, 'qbdoorlock:client:passcodeRequested', door.label)
+        local supplied = Kora.callback.trigger(source, 'qbdoorlock:client:passcodeRequested', door.label)
         authorised = type(supplied) == 'string' and supplied == door.passcode
     end
     local hookResult = triggerHooks('doorAuthorization', {
@@ -194,12 +194,12 @@ end
 
 local function pushDefinition(id)
     local door = getDoor(id)
-    if door then QB.events.push(-1, 'qbdoorlock:client:doorDefinitionUpdated', id, clientDefinition(door), states[id]) end
+    if door then Kora.events.push(-1, 'qbdoorlock:client:doorDefinitionUpdated', id, clientDefinition(door), states[id]) end
 end
 
 local function clearAutoLock(id)
     local timer = autoLockTimers[id]
-    if timer then QB.timers.clearTimeout(timer); autoLockTimers[id] = nil end
+    if timer then Kora.timers.clearTimeout(timer); autoLockTimers[id] = nil end
 end
 
 local setDoorState
@@ -209,11 +209,11 @@ local function applyOneState(id, locked, source, usedItem)
     if not door then return end
     clearAutoLock(id)
     states[id] = locked
-    QB.events.push(-1, 'qbdoorlock:client:doorStateChanged', id, locked, source)
+    Kora.events.push(-1, 'qbdoorlock:client:doorStateChanged', id, locked, source)
     TriggerEvent('qbdoorlock:stateChanged', source, id, locked, usedItem)
     local delay = not locked and (door.autoLock or Config.DefaultAutoLock) or nil
     if type(delay) == 'number' and delay > 0 then
-        autoLockTimers[id] = QB.timers.setTimeout(function()
+        autoLockTimers[id] = Kora.timers.setTimeout(function()
             autoLockTimers[id] = nil
             if states[id] == false then setDoorState(id, true, nil) end
         end, delay)
@@ -226,7 +226,7 @@ setDoorState = function(id, locked, source, usedItem)
     local linkedId = linkedDoors[id]
     if linkedId and getDoor(linkedId) and states[linkedId] ~= locked then applyOneState(linkedId, locked, source, usedItem) end
     if source and source > 0 and Config.Notify then
-        QB.notify.send(source, { title = translate('title'), message = translate(locked and 'locked' or 'unlocked'), type = 'success' })
+        Kora.notify.send(source, { title = translate('title'), message = translate(locked and 'locked' or 'unlocked'), type = 'success' })
     end
     return true
 end
@@ -237,7 +237,7 @@ local function persistDoor(id, door, releasePolicy)
     if not databaseReady then return false, 'Door storage is not ready.' end
     -- Ordinary editor saves must not remove another resource's access boundary.
     if not releasePolicy and doors[id] and doors[id].policyOwner then door.policyOwner = doors[id].policyOwner end
-    local saved, err = QB.sql.execute(
+    local saved, err = Kora.sql.execute(
         'INSERT INTO `qbdoorlock_doors` (`id`, `definition`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `definition` = VALUES(`definition`)',
         { id, encodeDefinition(door) })
     if not saved then
@@ -264,7 +264,7 @@ local function validId(value, lowerCase)
 end
 
 local function validateCreationDistance(source, door)
-    for _, leaf in ipairs(doorLeaves(door)) do if not QB.distance.player(source, leaf.coords, 12.0) then return false end end
+    for _, leaf in ipairs(doorLeaves(door)) do if not Kora.distance.player(source, leaf.coords, 12.0) then return false end end
     return true
 end
 
@@ -297,7 +297,7 @@ end
 local function unlinkDoor(id)
     local linkedId = linkedDoors[id]
     if not linkedId then return true end
-    local removed, err = QB.sql.update('DELETE FROM `qbdoorlock_links` WHERE `door_id` IN (?, ?)', { id, linkedId })
+    local removed, err = Kora.sql.update('DELETE FROM `qbdoorlock_links` WHERE `door_id` IN (?, ?)', { id, linkedId })
     if removed == nil then return false, err end
     linkedDoors[id], linkedDoors[linkedId] = nil, nil
     return true
@@ -314,11 +314,11 @@ local function deleteDoor(id)
     else
         query, parameters = 'DELETE FROM `qbdoorlock_doors` WHERE `id` = ?', { id }
     end
-    local removed, err = QB.sql.execute(query, parameters)
+    local removed, err = Kora.sql.execute(query, parameters)
     if removed == nil then return false, err or 'Could not delete the door.' end
     clearAutoLock(id)
     doors[id], states[id], doorPolicies[id] = nil, nil, nil
-    QB.events.push(-1, 'qbdoorlock:client:doorDefinitionRemoved', id)
+    Kora.events.push(-1, 'qbdoorlock:client:doorDefinitionRemoved', id)
     return true
 end
 
@@ -348,17 +348,17 @@ local function difficultyOptions(door)
     return { attempts = 1, pinCount = math.max(3, math.min(12, count + 2)), tolerance = tolerances / count, speed = speeds / count, timeLimit = 15000 }
 end
 
-QB.callback.register('qbdoorlock:server:doorsRequested', function()
+Kora.callback.register('qbdoorlock:server:doorsRequested', function()
     while not initializationComplete do Wait(50) end
     local definitions = {}
     for id, door in pairs(doors) do definitions[id] = clientDefinition(door) end
     return definitions, states
 end, { rateLimit = { max = 5, window = 10000 } })
 
-QB.callback.register('qbdoorlock:server:managementSnapshotRequested', function(source) return managementSnapshot(source) end,
+Kora.callback.register('qbdoorlock:server:managementSnapshotRequested', function(source) return managementSnapshot(source) end,
     { rateLimit = { max = 10, window = 10000 } })
 
-QB.callback.register('qbdoorlock:server:managementStateSet', function(source, id, locked)
+Kora.callback.register('qbdoorlock:server:managementStateSet', function(source, id, locked)
     if not isAdmin(source) then return nil, 'You do not have permission to manage door locks.' end
     if type(locked) ~= 'boolean' or not getDoor(id) then return nil, 'That door is no longer configured.' end
     setDoorState(id, locked, source)
@@ -408,14 +408,14 @@ local function logRefusal(source, action, err)
     return nil, err
 end
 
-QB.callback.register('qbdoorlock:server:managementDoorSaved', function(source, requestedId, raw, creating)
+Kora.callback.register('qbdoorlock:server:managementDoorSaved', function(source, requestedId, raw, creating)
     local id = validId(requestedId, creating == true)
     if not id then return nil, 'Door ID must use letters, numbers, dashes, or underscores.' end
     return saveManagedDoor(source, id, raw, creating == true)
 end, { rateLimit = { max = 15, window = 10000 } })
 
 -- Creates a door from its name alone and answers with the new ID, so the creator can open it straight away.
-QB.callback.register('qbdoorlock:server:managementDoorCreated', function(source, raw, sourceDoorId)
+Kora.callback.register('qbdoorlock:server:managementDoorCreated', function(source, raw, sourceDoorId)
     if type(raw) ~= 'table' then return nil, 'Door definition must be a table.' end
     local id = uniqueDoorId(raw.label)
     local snapshot, err = saveManagedDoor(source, id, raw, true, sourceDoorId)
@@ -456,7 +456,7 @@ local function uniqueCategoryId(label)
 end
 
 local function persistCategory(category)
-    local saved, err = QB.sql.execute(
+    local saved, err = Kora.sql.execute(
         'INSERT INTO `qbdoorlock_categories` (`id`, `label`, `defaults`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `defaults` = VALUES(`defaults`)',
         { category.id, category.label, json.encode(category.defaults) })
     if saved == nil then
@@ -498,7 +498,7 @@ local function findExistingDoor(door)
     return nil
 end
 
-QB.callback.register('qbdoorlock:server:managementCategoryCreated', function(source, rawLabel)
+Kora.callback.register('qbdoorlock:server:managementCategoryCreated', function(source, rawLabel)
     local problem = categoryProblem(source)
     if problem then return nil, problem end
     local label = categoryName(rawLabel)
@@ -518,7 +518,7 @@ QB.callback.register('qbdoorlock:server:managementCategoryCreated', function(sou
     return { snapshot = managementSnapshot(source), id = category.id }
 end, { rateLimit = { max = 6, window = 10000 } })
 
-QB.callback.register('qbdoorlock:server:managementCategoryRenamed', function(source, id, rawLabel)
+Kora.callback.register('qbdoorlock:server:managementCategoryRenamed', function(source, id, rawLabel)
     local problem = categoryProblem(source)
     if problem then return nil, problem end
     local category = type(id) == 'string' and categories[id] or nil
@@ -533,7 +533,7 @@ QB.callback.register('qbdoorlock:server:managementCategoryRenamed', function(sou
     return managementSnapshot(source)
 end, { rateLimit = { max = 10, window = 10000 } })
 
-QB.callback.register('qbdoorlock:server:managementCategoryDefaultsSaved', function(source, id, raw)
+Kora.callback.register('qbdoorlock:server:managementCategoryDefaultsSaved', function(source, id, raw)
     local problem = categoryProblem(source)
     if problem then return nil, problem end
     local category = type(id) == 'string' and categories[id] or nil
@@ -555,7 +555,7 @@ QB.callback.register('qbdoorlock:server:managementCategoryDefaultsSaved', functi
 end, { rateLimit = { max = 15, window = 10000 } })
 
 -- Deleting a category keeps its doors: they just stop being in a category.
-QB.callback.register('qbdoorlock:server:managementCategoryDeleted', function(source, id)
+Kora.callback.register('qbdoorlock:server:managementCategoryDeleted', function(source, id)
     local problem = categoryProblem(source)
     if problem then return nil, problem end
     if type(id) ~= 'string' or not categories[id] then return nil, 'That category no longer exists.' end
@@ -572,7 +572,7 @@ QB.callback.register('qbdoorlock:server:managementCategoryDeleted', function(sou
         end
     end
 
-    local removed, err = QB.sql.execute('DELETE FROM `qbdoorlock_categories` WHERE `id` = ?', { id })
+    local removed, err = Kora.sql.execute('DELETE FROM `qbdoorlock_categories` WHERE `id` = ?', { id })
     if removed == nil then return nil, err or 'Could not delete the category.' end
     categories[id] = nil
     return managementSnapshot(source)
@@ -581,7 +581,7 @@ end, { rateLimit = { max = 5, window = 10000 } })
 -- Places one door in a category: its settings are the category's defaults, its id is category-N and its
 -- name is "Category N" (both can be changed on the door afterwards, the id stays). Called once per door while
 -- the creator is placing, so the rate limit leaves room for a busy building.
-QB.callback.register('qbdoorlock:server:managementCategoryDoorCreated', function(source, categoryId, geometry)
+Kora.callback.register('qbdoorlock:server:managementCategoryDoorCreated', function(source, categoryId, geometry)
     local problem = categoryProblem(source)
     if problem then return nil, problem end
     local category = type(categoryId) == 'string' and categories[categoryId] or nil
@@ -610,7 +610,7 @@ QB.callback.register('qbdoorlock:server:managementCategoryDoorCreated', function
     return { snapshot = snapshot, id = id, label = door.label }
 end, { rateLimit = { max = 40, window = 10000 } })
 
-QB.callback.register('qbdoorlock:server:managementDoorDeleted', function(source, id)
+Kora.callback.register('qbdoorlock:server:managementDoorDeleted', function(source, id)
     if not isAdmin(source) then return nil, 'You do not have permission to delete door locks.' end
     if not databaseReady then return nil, 'Door storage is still starting.' end
     local deleted, err = deleteDoor(id)
@@ -618,21 +618,21 @@ QB.callback.register('qbdoorlock:server:managementDoorDeleted', function(source,
     return managementSnapshot(source)
 end, { rateLimit = { max = 5, window = 10000 } })
 
-QB.callback.register('qbdoorlock:server:managementDoorsLinked', function(source, id, linkedId)
+Kora.callback.register('qbdoorlock:server:managementDoorsLinked', function(source, id, linkedId)
     if not isAdmin(source) then return nil, 'You do not have permission to manage door locks.' end
     if not databaseReady then return nil, 'Door storage is still starting.' end
     if type(id) ~= 'string' or type(linkedId) ~= 'string' or id == linkedId or not getDoor(id) or not getDoor(linkedId) then
         return nil, 'Choose two different configured doors.'
     end
     if linkedDoors[id] or linkedDoors[linkedId] then return nil, 'Unlink either door before creating a new pair.' end
-    local saved, err = QB.sql.execute('INSERT INTO `qbdoorlock_links` (`door_id`, `linked_door_id`) VALUES (?, ?), (?, ?)', { id, linkedId, linkedId, id })
+    local saved, err = Kora.sql.execute('INSERT INTO `qbdoorlock_links` (`door_id`, `linked_door_id`) VALUES (?, ?), (?, ?)', { id, linkedId, linkedId, id })
     if saved == nil then return nil, err or 'Could not save the door link.' end
     linkedDoors[id], linkedDoors[linkedId] = linkedId, id
     setDoorState(linkedId, states[id], source)
     return managementSnapshot(source)
 end, { rateLimit = { max = 10, window = 10000 } })
 
-QB.callback.register('qbdoorlock:server:managementDoorsUnlinked', function(source, id)
+Kora.callback.register('qbdoorlock:server:managementDoorsUnlinked', function(source, id)
     if not isAdmin(source) then return nil, 'You do not have permission to manage door locks.' end
     if not databaseReady then return nil, 'Door storage is still starting.' end
     local unlinked, err = unlinkDoor(id)
@@ -649,24 +649,24 @@ local function lockpickRateLimit()
     return { max = limit.max, window = limit.window }
 end
 
-QB.callback.register('qbdoorlock:server:lockpickStarted', function(source, id)
+Kora.callback.register('qbdoorlock:server:lockpickStarted', function(source, id)
     local door = getDoor(id)
     if not door or not door.lockpick or not isNearDoor(source, door) then return nil, 'That door cannot be picked.' end
     if not Config.CanPickUnlockedDoors and not states[id] then return nil, 'That door is already unlocked.' end
     local authorised, requirement, slot = hasAccess(source, id, door, true)
     if not authorised then return nil, 'You need a lockpick.' end
-    local authorization = QB.minigames.authorizeProof(source, 'lockpick', difficultyOptions(door))
+    local authorization = Kora.minigames.authorizeProof(source, 'lockpick', difficultyOptions(door))
     if not authorization then return nil, 'The lockpick challenge could not start.' end
     pendingLockpicks[source] = { id = id, authorization = authorization, requirement = requirement, slot = slot }
     return authorization
 end, { rateLimit = lockpickRateLimit() })
 
-QB.events.register('qbdoorlock:server:doorToggled', function(source, id)
+Kora.events.register('qbdoorlock:server:doorToggled', function(source, id)
     local door = getDoor(id)
     if not door or not isNearDoor(source, door) then return end
     local authorised, requirement, slot = hasAccess(source, id, door, false)
     if not authorised then
-        QB.notify.send(source, { title = translate('title'), message = translate('access_denied'), type = 'error' })
+        Kora.notify.send(source, { title = translate('title'), message = translate('access_denied'), type = 'error' })
         return
     end
     if getDoor(id) ~= door or not isNearDoor(source, door) then return end
@@ -675,13 +675,13 @@ QB.events.register('qbdoorlock:server:doorToggled', function(source, id)
     if requirement and requirement.remove then removeItem(source, requirement, slot) end
 end, { rateLimit = { max = 10, window = 5000 } })
 
-QB.events.register('qbdoorlock:server:lockpickFinished', function(source, id, authorization, proof)
+Kora.events.register('qbdoorlock:server:lockpickFinished', function(source, id, authorization, proof)
     local pending = pendingLockpicks[source]
     pendingLockpicks[source] = nil
     if not pending or pending.id ~= id or pending.authorization ~= authorization then return end
     local door = getDoor(id)
     if not door or not door.lockpick or not isNearDoor(source, door) then return end
-    local successful = type(proof) == 'string' and QB.minigames.consumeProof(source, proof, 'lockpick', authorization) == true
+    local successful = type(proof) == 'string' and Kora.minigames.consumeProof(source, proof, 'lockpick', authorization) == true
     if successful then
         local requirement, slot = findItem(source, { pending.requirement })
         if not requirement then return end
@@ -691,36 +691,36 @@ QB.events.register('qbdoorlock:server:lockpickFinished', function(source, id, au
     local chances = Config.LockpickBreakChance or {}
     local chance = tonumber(successful and chances.success or chances.failure) or 0
     if chance > 0 and math.random(100) <= chance and removeItem(source, pending.requirement, pending.slot) then
-        QB.notify.send(source, { title = translate('title'), message = translate('lockpick_broke'), type = 'error' })
+        Kora.notify.send(source, { title = translate('title'), message = translate('lockpick_broke'), type = 'error' })
     end
 end, { rateLimit = { max = 5, window = 10000 } })
 
-QB.events.register('qbdoorlock:server:teleportRequested', function(source, id)
+Kora.events.register('qbdoorlock:server:teleportRequested', function(source, id)
     if not isAdmin(source) then return end
     local door = getDoor(id)
     if not door then return end
-    QB.events.push(source, 'qbdoorlock:client:teleported', DoorlockSchema.copyCoords(door.coords))
+    Kora.events.push(source, 'qbdoorlock:client:teleported', DoorlockSchema.copyCoords(door.coords))
 end, { rateLimit = { max = 5, window = 10000 } })
 
 local function commandPermission(source) return source > 0 and isAdmin(source) end
 
-QB.commands.add(Config.AdminCommand or 'doorlocks', translate('manage_help'), {
+Kora.commands.add(Config.AdminCommand or 'doorlocks', translate('manage_help'), {
     { name = 'closest', help = 'Sort the editor by the closest door.' },
 }, false, function(source, args)
-    QB.events.push(source, 'qbdoorlock:client:managementOpened', args[1] == 'closest')
+    Kora.events.push(source, 'qbdoorlock:client:managementOpened', args[1] == 'closest')
 end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
 
-QB.commands.add(Config.CreateCommand or 'adddoor', translate('create_help'), nil, false, function(source)
-    QB.events.push(source, 'qbdoorlock:client:targetedCreationRequested')
+Kora.commands.add(Config.CreateCommand or 'adddoor', translate('create_help'), nil, false, function(source)
+    Kora.events.push(source, 'qbdoorlock:client:targetedCreationRequested')
 end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
 
 local function importOxDoors()
     if not databaseReady then return nil, 'Door storage is not ready.' end
-    local exists, existsErr = QB.sql.scalar(
+    local exists, existsErr = Kora.sql.scalar(
         "SELECT COUNT(*) FROM `information_schema`.`tables` WHERE `table_schema` = DATABASE() AND `table_name` = 'ox_doorlock'"
     )
     if existsErr or tonumber(exists) ~= 1 then return nil, existsErr or 'The ox_doorlock table does not exist.' end
-    local rows, queryErr = QB.sql.query('SELECT `id`, `name`, `data` FROM `ox_doorlock` ORDER BY `id`')
+    local rows, queryErr = Kora.sql.query('SELECT `id`, `name`, `data` FROM `ox_doorlock` ORDER BY `id`')
     if queryErr then return nil, queryErr end
     local imported, skipped = 0, 0
     for _, row in ipairs(rows) do
@@ -742,13 +742,13 @@ local function importOxDoors()
     return imported, skipped
 end
 
-QB.commands.add(Config.ImportCommand or 'importoxdoors', translate('import_help'), nil, false, function(source)
+Kora.commands.add(Config.ImportCommand or 'importoxdoors', translate('import_help'), nil, false, function(source)
     local imported, err = importOxDoors()
     if imported == nil then
-        QB.notify.send(source, { title = translate('title'), message = translate('import_failed', { error = err }), type = 'error' })
+        Kora.notify.send(source, { title = translate('title'), message = translate('import_failed', { error = err }), type = 'error' })
         return
     end
-    QB.notify.send(source, { title = translate('title'), message = translate('imported', { count = imported }), type = 'success' })
+    Kora.notify.send(source, { title = translate('title'), message = translate('imported', { count = imported }), type = 'success' })
 end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
 
 ---@param id string
@@ -834,7 +834,7 @@ exports('removeDoor', function(id) if not databaseReady then return false end; r
 
 exports('RegisterDoorPolicy', function(id, callback)
     local door, owner = getDoor(id), GetInvokingResource() or RESOURCE
-    if not door or not QB.compat.isCallable(callback) then return false, 'Door and callable policy are required.' end
+    if not door or not Kora.compat.isCallable(callback) then return false, 'Door and callable policy are required.' end
     if door.policyOwner and door.policyOwner ~= owner then return false, 'Door policy belongs to another resource.' end
     local first = not door.policyOwner
     local raw = DoorlockSchema.forNetwork(door)
@@ -898,12 +898,12 @@ for id, raw in pairs(Config.Doors) do
 end
 
 CreateThread(function()
-    if not QB.sql.ready(60000) then
+    if not Kora.sql.ready(60000) then
         initializationComplete = true
         return print('^1[qbdoorlock]^7 qbsql was not ready; persistent door management is disabled.')
     end
     
-    local rows, queryErr = QB.sql.query('SELECT `id`, `definition` FROM `qbdoorlock_doors`')
+    local rows, queryErr = Kora.sql.query('SELECT `id`, `definition` FROM `qbdoorlock_doors`')
     if queryErr then initializationComplete = true; return print(('^1[qbdoorlock]^7 could not load doors: %s'):format(queryErr)) end
     for _, row in ipairs(rows) do
         local ok, raw = pcall(json.decode, row.definition)
@@ -919,7 +919,7 @@ CreateThread(function()
             print(('^3[qbdoorlock]^7 skipped malformed stored door %s'):format(tostring(row.id)))
         end
     end
-    local links, linksErr = QB.sql.query('SELECT `door_id`, `linked_door_id` FROM `qbdoorlock_links`')
+    local links, linksErr = Kora.sql.query('SELECT `door_id`, `linked_door_id` FROM `qbdoorlock_links`')
     if linksErr then initializationComplete = true; return print(('^1[qbdoorlock]^7 could not load door links: %s'):format(linksErr)) end
     local candidates = {}
     for _, row in ipairs(links) do
@@ -928,8 +928,8 @@ CreateThread(function()
     end
     for id, linkedId in pairs(candidates) do if candidates[linkedId] == id then linkedDoors[id] = linkedId end end
 
-    QB.sql.execute('CREATE TABLE IF NOT EXISTS `qbdoorlock_categories` (`id` VARCHAR(48) NOT NULL, `label` VARCHAR(96) NOT NULL, `defaults` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci')
-    local categoryRows, categoryErr = QB.sql.query('SELECT `id`, `label`, `defaults` FROM `qbdoorlock_categories`')
+    Kora.sql.execute('CREATE TABLE IF NOT EXISTS `qbdoorlock_categories` (`id` VARCHAR(48) NOT NULL, `label` VARCHAR(96) NOT NULL, `defaults` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci')
+    local categoryRows, categoryErr = Kora.sql.query('SELECT `id`, `label`, `defaults` FROM `qbdoorlock_categories`')
     if categoryErr then
         print(('^3[qbdoorlock]^7 could not load door categories: %s'):format(tostring(categoryErr)))
     else

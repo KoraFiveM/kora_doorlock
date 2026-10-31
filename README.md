@@ -56,7 +56,7 @@ and lockpick setting, a *Closest to me* sort and a *Refresh* button. Pick a door
 to edit it.
 
 **Creating a door**: press *Create new door*, type a name and say whether it is a
-double door. The creator closes: aim at the door (it is outlined, found with `QB.raycast`) and press **E** to confirm (for a double
+double door. The creator closes: aim at the door (it is outlined, found with `Kora.raycast`) and press **E** to confirm (for a double
 door, then aim at the second leaf and press **E** again). **Backspace** cancels. The door
 ID is made from the name (`Back Office` becomes `back-office`), and the new door's
 page opens when you are done.

@@ -2,21 +2,21 @@ local doors, activeDoors, streamedDoors, entityDoors = {}, {}, {}, {}
 local targetModels, pendingTargetModels = {}, {}
 local nearbyDoor, prompt, pickingLock, lockpickTarget
 local toggleBinding, activeSelection
-local SELECT_CONTROLS = { 38, 177 } -- E confirms, Backspace cancels, like QB.raycast.getCoords
+local SELECT_CONTROLS = { 38, 177 } -- E confirms, Backspace cancels, like Kora.raycast.getCoords
 local spriteDicts = {}
 
 local function translate(key, replacements)
-    return QB.lang(key, replacements)
+    return Kora.lang(key, replacements)
 end
 
 local function notify(message, notificationType)
-    QB.notify.send({ title = translate('title'), message = message, type = notificationType or 'info' })
+    Kora.notify.send({ title = translate('title'), message = message, type = notificationType or 'info' })
 end
 
 -- kora_lib re-raises a rate-limited callback as a script error. Callers here treat it as a
 -- normal refusal, so catch it and return nil plus a message the player can read.
 local function trigger(name, ...)
-    local ok, result, err = pcall(QB.callback.trigger, name, ...)
+    local ok, result, err = pcall(Kora.callback.trigger, name, ...)
     if ok then return result, err end
     local retry = tonumber(tostring(result):match('retry in (%d+)ms'))
     if retry then return nil, translate('slow_down', { seconds = math.ceil(retry / 1000) }) end
@@ -73,15 +73,15 @@ local function iconCoords(door)
 end
 
 local function hidePrompt()
-    if prompt then QB.textui.hide(prompt); prompt = nil end
+    if prompt then Kora.textui.hide(prompt); prompt = nil end
 end
 
 local function updatePrompt()
     local door = nearbyDoor and doors[nearbyDoor]
     if not door or door.hideUi or not Config.DrawTextUI then return hidePrompt() end
     local options = { key = 'E', icon = door.locked and 'Lock' or 'Unlock', position = 'right-center' }
-    if prompt then QB.textui.update(prompt, stateText(door), options)
-    else prompt = QB.textui.show(stateText(door), options) end
+    if prompt then Kora.textui.update(prompt, stateText(door), options)
+    else prompt = Kora.textui.show(stateText(door), options) end
 end
 
 local function clearDoorEntities(door)
@@ -116,7 +116,7 @@ local function playDoorSound(door, locked)
     local name = locked and door.lockSound or door.unlockSound
     local set = locked and door.lockSoundSet or door.unlockSoundSet
     name, set = name or (fallback and fallback.name), set or (fallback and fallback.set)
-    if name and set then QB.sound.playFromCoords(door.coords, name, set, { range = 20.0, releaseAfter = 3000 }) end
+    if name and set then Kora.sound.playFromCoords(door.coords, name, set, { range = 20.0, releaseAfter = 3000 }) end
 end
 
 -- A door registered or re-registered in the same frame can miss its lock state, so for a few seconds the
@@ -157,7 +157,7 @@ local function applyState(id, locked, source, silent)
         DoorSystemSetDoorState(hash, door.locked and 1 or 0, false, false)
         if door.holdOpen then DoorSystemSetHoldOpen(hash, not door.locked) end
     end
-    if changed and not silent and QB.distance.player(door.coords, 20.0) then playDoorSound(door, door.locked) end
+    if changed and not silent and Kora.distance.player(door.coords, 20.0) then playDoorSound(door, door.locked) end
     if nearbyDoor == id then updatePrompt() end
 
     enforceState(id)
@@ -187,15 +187,15 @@ local function pickDoor(id)
     CreateThread(function()
         local authorization, err = trigger('qbdoorlock:server:lockpickStarted', id)
         if not authorization then pickingLock = false; return notify(err or translate('cannot_pick'), 'error') end
-        local playerPed = QB.cache.ped()
+        local playerPed = Kora.cache.ped()
         TaskTurnPedToFaceCoord(playerPed, door.coords.x, door.coords.y, door.coords.z, 1000)
         Wait(400)
-        local animation = QB.anim.play(playerPed, 'mp_common_heist', 'pick_door', {
+        local animation = Kora.anim.play(playerPed, 'mp_common_heist', 'pick_door', {
             blendInSpeed = 3.0, blendOutSpeed = 1.0, flag = 49,
         })
-        local result = QB.minigames.play('lockpick', nil, authorization)
-        if animation then QB.anim.stopHandle(animation, 0) end
-        QB.events.trigger('qbdoorlock:server:lockpickFinished', id, authorization, result and result.proof or nil)
+        local result = Kora.minigames.play('lockpick', nil, authorization)
+        if animation then Kora.anim.stopHandle(animation, 0) end
+        Kora.events.trigger('qbdoorlock:server:lockpickFinished', id, authorization, result and result.proof or nil)
         if not result or not result.success then notify(translate('lock_resisted'), 'error') end
         pickingLock = false
     end)
@@ -204,7 +204,7 @@ end
 
 local function registerTargetModel(model)
     if targetModels[model] or GetResourceState('kora_target') ~= 'started' then pendingTargetModels[model] = true; return end
-    local ok, targetId = pcall(QB.interact.addModel, model, {
+    local ok, targetId = pcall(Kora.interact.addModel, model, {
         {
             label = translate('pick_lock'), icon = 'LockKeyhole', distance = 1.5,
             canInteract = function(entity) return canTargetLockpick(entity) end,
@@ -248,12 +248,12 @@ local function setupDoor(id, raw, locked)
         if door.holdOpen then DoorSystemSetHoldOpen(hash, not door.locked) end
         pendingTargetModels[leaf.model] = true
     end
-    door.interactionZone = QB.zones.point({
+    door.interactionZone = Kora.zones.point({
         coords = door.coords, radius = door.distance, debug = Config.Debug,
         onEnter = function() activeDoors[id] = true end,
         onExit = function() activeDoors[id] = nil; if nearbyDoor == id then nearbyDoor = nil; hidePrompt() end end,
     })
-    door.streamZone = QB.zones.point({
+    door.streamZone = Kora.zones.point({
         coords = door.coords, radius = 80.0, debug = false,
         onEnter = function() streamedDoors[id] = true end,
         onExit = function() streamedDoors[id] = nil; clearDoorEntities(door) end,
@@ -263,7 +263,7 @@ local function setupDoor(id, raw, locked)
 end
 
 local function targetedLeaf()
-    local hit, _, entity = QB.raycast.fromCamera(6.0)
+    local hit, _, entity = Kora.raycast.fromCamera(6.0)
     if not hit or not entity or entity == 0 or GetEntityType(entity) ~= 3 then return nil end
     if getDoorIdFromEntity(entity) then return nil end
     local coords = GetEntityCoords(entity)
@@ -276,12 +276,12 @@ local function releaseSelection(state)
     if activeSelection == state then activeSelection = nil end
     if state.highlighted and DoesEntityExist(state.highlighted) then SetEntityDrawOutline(state.highlighted, false) end
     state.highlighted = nil
-    if state.hint then pcall(QB.textui.hide, state.hint) end
+    if state.hint then pcall(Kora.textui.hide, state.hint) end
     toggleBinding.disable(false)
 end
 
 -- Blocks until the player confirms the map door under the crosshair with E, or
--- cancels with Backspace (returns nil). The door is found with QB.raycast and
+-- cancels with Backspace (returns nil). The door is found with Kora.raycast and
 -- outlined while aimed at. `first` is a leaf already chosen, so a double door
 -- cannot pick the same leaf twice. `hintText` replaces the default prompt text.
 local function selectLeaf(first, promptKey, hintText)
@@ -289,7 +289,7 @@ local function selectLeaf(first, promptKey, hintText)
     local state = {}
     activeSelection = state
     toggleBinding.disable(true)
-    state.hint = QB.textui.show(('%s  ·  **E:** confirm  ·  **Backspace:** cancel'):format(hintText or translate(promptKey or 'select_second')),
+    state.hint = Kora.textui.show(('%s  ·  **E:** confirm  ·  **Backspace:** cancel'):format(hintText or translate(promptKey or 'select_second')),
         { icon = 'DoorOpen' })
 
     local ok, result = pcall(function()
@@ -333,26 +333,26 @@ DoorlockClient = {
     end,
 }
 
-QB.callback.register('qbdoorlock:client:passcodeRequested', function(label)
-    local result = QB.nui.openInputDialog({ { id = 'passcode', label = 'Passcode', type = 'password', required = true, maxLength = 128 } }, label or 'Door lock')
+Kora.callback.register('qbdoorlock:client:passcodeRequested', function(label)
+    local result = Kora.nui.openInputDialog({ { id = 'passcode', label = 'Passcode', type = 'password', required = true, maxLength = 128 } }, label or 'Door lock')
     return result and not result.cancelled and result.values and result.values.passcode or nil
 end)
 
-QB.events.onPush('qbdoorlock:client:doorStateChanged', function(id, locked, source) applyState(id, locked, source, false) end)
-QB.events.onPush('qbdoorlock:client:doorDefinitionUpdated', function(id, definition, locked) setupDoor(id, definition, locked) end)
-QB.events.onPush('qbdoorlock:client:doorDefinitionRemoved', removeDoor)
-QB.events.onPush('qbdoorlock:client:teleported', function(coords) QB.teleport.player(coords) end)
+Kora.events.onPush('qbdoorlock:client:doorStateChanged', function(id, locked, source) applyState(id, locked, source, false) end)
+Kora.events.onPush('qbdoorlock:client:doorDefinitionUpdated', function(id, definition, locked) setupDoor(id, definition, locked) end)
+Kora.events.onPush('qbdoorlock:client:doorDefinitionRemoved', removeDoor)
+Kora.events.onPush('qbdoorlock:client:teleported', function(coords) Kora.teleport.player(coords) end)
 
-toggleBinding = QB.keybind.add({
+toggleBinding = Kora.keybind.add({
     name = 'qbdoorlock_toggle', description = 'Lock or unlock the nearby door', defaultKey = 'E', defaultMapper = 'keyboard',
-    onPressed = function() if nearbyDoor then QB.events.trigger('qbdoorlock:server:doorToggled', nearbyDoor) end end,
+    onPressed = function() if nearbyDoor then Kora.events.trigger('qbdoorlock:server:doorToggled', nearbyDoor) end end,
 })
 
 CreateThread(function()
     local spriteConfig = Config.DrawSprite
     if spriteConfig then
         for _, sprite in pairs(spriteConfig) do
-            if sprite.dict and QB.stream.loadTextureDict(sprite.dict) then spriteDicts[sprite.dict] = true end
+            if sprite.dict and Kora.stream.loadTextureDict(sprite.dict) then spriteDicts[sprite.dict] = true end
         end
     end
     local definitions, serverStates = trigger('qbdoorlock:server:doorsRequested')
@@ -401,7 +401,7 @@ CreateThread(function()
                     local entity = door.entities[index]
                     if not entity or not DoesEntityExist(entity) then
                         if entity then entityDoors[entity] = nil end
-                        entity = QB.world.getClosestEntity('object', leaf.coords, {
+                        entity = Kora.world.getClosestEntity('object', leaf.coords, {
                             radius = 1.0, models = { leaf.model }, includeInvisible = true,
                         })
                         if entity then
@@ -442,7 +442,7 @@ exports('getDoorIdFromEntity', getDoorIdFromEntity)
 ---@return boolean used
 exports('useClosestDoor', function()
     if not nearbyDoor then return false end
-    QB.events.trigger('qbdoorlock:server:doorToggled', nearbyDoor)
+    Kora.events.trigger('qbdoorlock:server:doorToggled', nearbyDoor)
     return true
 end)
 

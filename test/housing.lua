@@ -18,7 +18,7 @@ local function setup(stored, linked, rateLimit)
     env.exports = setmetatable({ kora_core = { getPlayer = function() return { citizenid = 'CID1' } end } }, {
         __call = function(_, name, fn) f.exports[name] = fn end,
     })
-    env.QB = {
+    env.Kora = {
         lang = function(key) return key end,
         permissions = { hasPermission = function() return false end },
         compat = { isCallable = function(value) return type(value) == 'function' end },

@@ -31,11 +31,11 @@ local function optionalText(value)
 end
 
 local function toast(message)
-    QB.notify.send({ title = TITLE, message = message, type = 'error' })
+    Kora.notify.send({ title = TITLE, message = message, type = 'error' })
 end
 
 local function confirmed(title, message)
-    local answer = QB.nui.openAlert({ title = title, message = message, confirmLabel = 'Delete' })
+    local answer = Kora.nui.openAlert({ title = title, message = message, confirmLabel = 'Delete' })
     return answer and answer.confirmed == true
 end
 
@@ -149,7 +149,7 @@ local function doorsView()
         if door.locked then lockedCount = lockedCount + 1 end
     end
 
-    local position = QB.cache.coords()
+    local position = Kora.cache.coords()
     local rows = {}
     for _, door in ipairs(doors) do
         local distance = distanceTo(door, position)
@@ -635,7 +635,7 @@ end
 
 local function refresh(message)
     local navigation = buildNavigation()
-    QB.nui.updateApp(APP_ID, { navigation = navigation })
+    Kora.nui.updateApp(APP_ID, { navigation = navigation })
     return { update = { navigation = navigation }, notice = message }
 end
 
@@ -690,7 +690,7 @@ local function edit(door, mutate, message)
 end
 
 local function askNewDoor(title, name, double)
-    local result = QB.nui.openInputDialog({
+    local result = Kora.nui.openInputDialog({
         { id = 'name', label = 'Door name', type = 'text', required = true, maxLength = 96, default = name },
         { id = 'double', label = 'Double door', type = 'checkbox', default = double == true },
     }, title, 'You will aim at the door next. You can change everything later.')
@@ -709,7 +709,7 @@ local function askGroup(current)
     fields[#fields + 1] = { id = 'grade', label = 'Minimum grade', type = 'number', min = 0, max = 1000, required = true,
         default = current and current.grade or 0 }
 
-    local result = QB.nui.openInputDialog(fields, current and ('Edit %s'):format(current.name) or 'Add job or gang',
+    local result = Kora.nui.openInputDialog(fields, current and ('Edit %s'):format(current.name) or 'Add job or gang',
         'Members of this job or gang can use the door from this grade up.')
     if not result or result.cancelled then return nil end
 
@@ -721,7 +721,7 @@ local function askGroup(current)
 end
 
 local function askCharacter()
-    local result = QB.nui.openInputDialog({
+    local result = Kora.nui.openInputDialog({
         { id = 'character', label = 'Character ID', type = 'text', required = true, maxLength = 96 },
     }, 'Add character', 'This one character can always use the door.')
     if not result or result.cancelled then return nil end
@@ -730,7 +730,7 @@ end
 
 local function askItem(current)
     local metadataType = current and type(current.metadata) == 'table' and current.metadata.type or nil
-    local result = QB.nui.openInputDialog({
+    local result = Kora.nui.openInputDialog({
         { id = 'name', label = 'Item name', type = 'text', required = true, maxLength = 64, default = current and current.name or '' },
         { id = 'type', label = 'Metadata type', type = 'text', maxLength = 128, default = metadataType and tostring(metadataType) or '',
             description = 'Optional. Only items whose type matches are accepted.' },
@@ -844,7 +844,7 @@ local function placeCategoryDoors(categoryId)
 
     stage(false)
 
-    local answer = QB.nui.openAlert({
+    local answer = Kora.nui.openAlert({
         title = 'Double doors',
         message = ('Single doors are done for %s. Place double doors now?'):format(category.label),
         confirmLabel = 'Place double doors',
@@ -1012,7 +1012,7 @@ local function doorAction(actionId, values, target)
     end
 
     if actionId == 'door:teleport' then
-        QB.events.trigger('qbdoorlock:server:teleportRequested', door.id)
+        Kora.events.trigger('qbdoorlock:server:teleportRequested', door.id)
         return { close = true }
     end
 
@@ -1096,7 +1096,7 @@ local function openCategory(id, message)
 end
 
 local function askCategoryName()
-    local result = QB.nui.openInputDialog({
+    local result = Kora.nui.openInputDialog({
         { id = 'name', label = 'Category name', type = 'text', required = true, maxLength = 64 },
     }, 'New category', 'For example a building: "Mission Row PD". Its doors will be called mission-row-pd-1, mission-row-pd-2 ...')
     if not result or result.cancelled then return nil end
@@ -1168,7 +1168,7 @@ local function onAction(actionId, context)
     return refresh()
 end
 
-QB.nui.registerApp({
+Kora.nui.registerApp({
     id = APP_ID,
     title = TITLE,
     icon = 'LockKeyhole',
@@ -1205,16 +1205,16 @@ local function open(options)
             runTool(tool)
         end
 
-        QB.nui.updateApp(APP_ID, { navigation = buildNavigation() })
-        QB.nui.openApp(APP_ID, { viewId = currentView })
+        Kora.nui.updateApp(APP_ID, { navigation = buildNavigation() })
+        Kora.nui.openApp(APP_ID, { viewId = currentView })
         if not pendingTool then break end
     end
 end
 
-QB.events.onPush('qbdoorlock:client:managementOpened', function(closest)
+Kora.events.onPush('qbdoorlock:client:managementOpened', function(closest)
     CreateThread(function() open({ closestFirst = closest == true }) end)
 end)
 
-QB.events.onPush('qbdoorlock:client:targetedCreationRequested', function()
+Kora.events.onPush('qbdoorlock:client:targetedCreationRequested', function()
     CreateThread(function() open({ create = true }) end)
 end)

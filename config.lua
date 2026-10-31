@@ -68,39 +68,39 @@ Config.CreateCommand = 'adddoor'
 Config.ImportCommand = 'importoxdoors'
 
 -- Registers this resource-owned configuration with kora_lib without changing its public Config table.
-if QB and QB.config and QB.config.adopt then
-    Config.Doors = QB.config.map(Config.Doors, QB.config.object({}), {
+if Kora and Kora.config and Kora.config.adopt then
+    Config.Doors = Kora.config.map(Config.Doors, Kora.config.object({}), {
         label = 'Authored doors',
         description = 'Defines permanent door IDs and their authored access, model, coordinate, lock, sound, and optional auto-lock settings. Each row key is the stable door ID and each value is a JSON object. In-game database edits override these defaults; verify model hashes and coordinates before restarting qbdoorlock.',
     })
-    Config.DefaultAutoLock = QB.config.optional(Config.DefaultAutoLock,
-        QB.config.integer(0, { min = 0 }), {
+    Config.DefaultAutoLock = Kora.config.optional(Config.DefaultAutoLock,
+        Kora.config.integer(0, { min = 0 }), {
             label = 'Default automatic lock delay',
             description = 'Optionally sets the default number of milliseconds an unlocked door waits before locking itself. Leave this unset to disable automatic locking unless an individual door supplies its own autoLock value.',
         })
-    Config.lockpickRateLimit = QB.config.object({
-        max = QB.config.integer(Config.lockpickRateLimit.max, {
+    Config.lockpickRateLimit = Kora.config.object({
+        max = Kora.config.integer(Config.lockpickRateLimit.max, {
             min = 1,
             label = 'Lockpick starts per window',
             description = 'Sets how many lockpick attempts one player may start during the rate-limit window. Further attempts are refused until the window passes.',
         }),
-        window = QB.config.integer(Config.lockpickRateLimit.window, {
+        window = Kora.config.integer(Config.lockpickRateLimit.window, {
             min = 1,
             label = 'Lockpick rate-limit window',
             description = 'Sets the rolling window in milliseconds used to count one player\'s lockpick starts.',
         }),
     }, { advanced = true })
-    Config.UnrestrictedDoorsOpenToAll = QB.config.boolean(Config.UnrestrictedDoorsOpenToAll, {
+    Config.UnrestrictedDoorsOpenToAll = Kora.config.boolean(Config.UnrestrictedDoorsOpenToAll, {
         label = 'Unrestricted doors open to everyone',
         description = 'When off (recommended), a door with no groups, characters, key items or passcode can only be locked or unlocked by admins and players with a door ACE. Turn on to let any player toggle such doors, as older versions did. Applies the next time someone uses a door.',
     })
-    Config.DrawSpriteCentered = QB.config.boolean(Config.DrawSpriteCentered, {
+    Config.DrawSpriteCentered = Kora.config.boolean(Config.DrawSpriteCentered, {
         label = 'Centre lock icon on single doors',
         description = 'Draws the lock icon at the middle of a single door using its model size instead of at its hinge. Double doors are always drawn halfway between their two leaves. Applies immediately.',
     })
-    Config.DrawSpriteOffset = QB.config.vector3(Config.DrawSpriteOffset, {
+    Config.DrawSpriteOffset = Kora.config.vector3(Config.DrawSpriteOffset, {
         label = 'Lock icon offset',
         description = 'World-space metres added to the lock icon position (x, y, z) after centring. Leave at 0, 0, 0 unless a door style needs the icon nudged. Applies immediately.',
     })
-    Config = QB.config.adopt(Config)
+    Config = Kora.config.adopt(Config)
 end
