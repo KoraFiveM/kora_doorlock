@@ -183,6 +183,17 @@ ox-style difficulty arrays (`easy`, `medium`, `hard`, or custom
 kora_lib's server-validated lockpick game. New definitions should use the native
 kora_lib options shown above.
 
+## Doors with no requirements
+
+```lua
+Config.UnrestrictedDoorsOpenToAll = false -- default
+```
+
+`false` (the default): doors with no job/item/citizen requirements (no `groups`, `items`, `characters` or
+`passcode`) can only be used by admins and players with a door ACE. Set it to `true` to let everyone use them.
+The server enforces this on every toggle; if the option is missing or `nil` it behaves as `false`. It can also
+be changed from the kora_lib config panel and applies the next time someone uses a door.
+
 ## ACE access
 
 Grant one door by its stable ID (recommended) or its ox-compatible display
@@ -259,4 +270,5 @@ Run the plain-Lua property-policy suite from this resource directory:
 
 ```sh
 lua test/housing.lua
+lua test/access.lua
 ```
