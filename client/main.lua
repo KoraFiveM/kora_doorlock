@@ -289,7 +289,7 @@ local function selectLeaf(first, promptKey, hintText)
     local state = {}
     activeSelection = state
     toggleBinding.disable(true)
-    state.hint = Kora.textui.show(('%s  ·  **E:** confirm  ·  **Backspace:** cancel'):format(hintText or translate(promptKey or 'select_second')),
+    state.hint = Kora.textui.show(('%s  ·  %s'):format(hintText or translate(promptKey or 'select_second'), translate('select_controls')),
         { icon = 'DoorOpen' })
 
     local ok, result = pcall(function()
@@ -334,7 +334,7 @@ DoorlockClient = {
 }
 
 Kora.callback.register('qbdoorlock:client:passcodeRequested', function(label)
-    local result = Kora.nui.openInputDialog({ { id = 'passcode', label = 'Passcode', type = 'password', required = true, maxLength = 128 } }, label or 'Door lock')
+    local result = Kora.nui.openInputDialog({ { id = 'passcode', label = translate('passcode_label'), type = 'password', required = true, maxLength = 128 } }, label or translate('title'))
     return result and not result.cancelled and result.values and result.values.passcode or nil
 end)
 
@@ -344,7 +344,7 @@ Kora.events.onPush('qbdoorlock:client:doorDefinitionRemoved', removeDoor)
 Kora.events.onPush('qbdoorlock:client:teleported', function(coords) Kora.teleport.player(coords) end)
 
 toggleBinding = Kora.keybind.add({
-    name = 'qbdoorlock_toggle', description = 'Lock or unlock the nearby door', defaultKey = 'E', defaultMapper = 'keyboard',
+    name = 'qbdoorlock_toggle', description = translate('keybind_toggle'), defaultKey = 'E', defaultMapper = 'keyboard',
     onPressed = function() if nearbyDoor then Kora.events.trigger('qbdoorlock:server:doorToggled', nearbyDoor) end end,
 })
 

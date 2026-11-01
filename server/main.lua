@@ -234,7 +234,7 @@ end
 local function encodeDefinition(door) return json.encode(DoorlockSchema.forNetwork(door)) end
 
 local function persistDoor(id, door, releasePolicy)
-    if not databaseReady then return false, 'Door storage is not ready.' end
+    if not databaseReady then return false, translate('err_storage_not_ready') end
     -- Ordinary editor saves must not remove another resource's access boundary.
     if not releasePolicy and doors[id] and doors[id].policyOwner then door.policyOwner = doors[id].policyOwner end
     local saved, err = Kora.sql.execute(
@@ -242,7 +242,7 @@ local function persistDoor(id, door, releasePolicy)
         { id, encodeDefinition(door) })
     if not saved then
         print(('^1[qbdoorlock]^7 saving door %s failed: %s'):format(tostring(id), tostring(err or 'qbsql returned nothing')))
-        return false, err or 'The database refused the door. See the server console.'
+        return false, err or translate('err_db_door')
     end
     return true
 end
@@ -269,7 +269,7 @@ local function validateCreationDistance(source, door)
 end
 
 local function managementSnapshot(source)
-    if not isAdmin(source) then return nil, 'You do not have permission to manage door locks.' end
+    if not isAdmin(source) then return nil, translate('err_no_permission_manage') end
     local result = {}
     for id, door in pairs(doors) do
         local definition = clientDefinition(door)
@@ -304,7 +304,7 @@ local function unlinkDoor(id)
 end
 
 local function deleteDoor(id)
-    if not getDoor(id) then return false, 'That door is not configured.' end
+    if not getDoor(id) then return false, translate('err_door_not_configured') end
     local unlinked, unlinkErr = unlinkDoor(id)
     if not unlinked then return false, unlinkErr end
     local query, parameters
@@ -315,7 +315,7 @@ local function deleteDoor(id)
         query, parameters = 'DELETE FROM `qbdoorlock_doors` WHERE `id` = ?', { id }
     end
     local removed, err = Kora.sql.execute(query, parameters)
-    if removed == nil then return false, err or 'Could not delete the door.' end
+    if removed == nil then return false, err or translate('err_delete_failed') end
     clearAutoLock(id)
     doors[id], states[id], doorPolicies[id] = nil, nil, nil
     Kora.events.push(-1, 'qbdoorlock:client:doorDefinitionRemoved', id)
@@ -359,8 +359,8 @@ Kora.callback.register('qbdoorlock:server:managementSnapshotRequested', function
     { rateLimit = { max = 10, window = 10000 } })
 
 Kora.callback.register('qbdoorlock:server:managementStateSet', function(source, id, locked)
-    if not isAdmin(source) then return nil, 'You do not have permission to manage door locks.' end
-    if type(locked) ~= 'boolean' or not getDoor(id) then return nil, 'That door is no longer configured.' end
+    if not isAdmin(source) then return nil, translate('err_no_permission_manage') end
+    if type(locked) ~= 'boolean' or not getDoor(id) then return nil, translate('err_door_gone') end
     setDoorState(id, locked, source)
     return managementSnapshot(source)
 end, { rateLimit = { max = 20, window = 10000 } })
@@ -376,14 +376,14 @@ local function uniqueDoorId(label)
 end
 
 local function saveManagedDoor(source, id, raw, creating, sourceDoorId)
-    if not isAdmin(source) then return nil, 'You do not have permission to save door locks.' end
-    if not databaseReady then return nil, 'Door storage is still starting.' end
-    if creating and doors[id] then return nil, 'That door ID is already in use.' end
-    if not creating and not doors[id] then return nil, 'That door is no longer configured.' end
+    if not isAdmin(source) then return nil, translate('err_no_permission_save') end
+    if not databaseReady then return nil, translate('err_storage_starting') end
+    if creating and doors[id] then return nil, translate('err_id_in_use') end
+    if not creating and not doors[id] then return nil, translate('err_door_gone') end
     local previous = not creating and doors[id] or nil
     if creating and sourceDoorId ~= nil then
         previous = getDoor(sourceDoorId)
-        if not previous then return nil, 'The source door is no longer configured.' end
+        if not previous then return nil, translate('err_source_gone') end
     end
     local door, err = DoorlockSchema.normalize(raw, Config.InteractionDistance)
     if not door then return nil, err end
@@ -394,7 +394,7 @@ local function saveManagedDoor(source, id, raw, creating, sourceDoorId)
         door.passcode = previous.passcode
     end
     if door.category and categoriesReady and not categories[door.category] then door.category = nil end
-    if creating and not validateCreationDistance(source, door) then return nil, 'All selected doors must be within 12 metres of you.' end
+    if creating and not validateCreationDistance(source, door) then return nil, translate('err_too_far') end
     local saved, saveErr = persistDoor(id, door)
     if not saved then return nil, saveErr end
     installDoor(id, door, false)
@@ -410,13 +410,13 @@ end
 
 Kora.callback.register('qbdoorlock:server:managementDoorSaved', function(source, requestedId, raw, creating)
     local id = validId(requestedId, creating == true)
-    if not id then return nil, 'Door ID must use letters, numbers, dashes, or underscores.' end
+    if not id then return nil, translate('err_door_id_format') end
     return saveManagedDoor(source, id, raw, creating == true)
 end, { rateLimit = { max = 15, window = 10000 } })
 
 -- Creates a door from its name alone and answers with the new ID, so the creator can open it straight away.
 Kora.callback.register('qbdoorlock:server:managementDoorCreated', function(source, raw, sourceDoorId)
-    if type(raw) ~= 'table' then return nil, 'Door definition must be a table.' end
+    if type(raw) ~= 'table' then return nil, translate('err_definition_table') end
     local id = uniqueDoorId(raw.label)
     local snapshot, err = saveManagedDoor(source, id, raw, true, sourceDoorId)
     if not snapshot then return logRefusal(source, 'creating ' .. id, err) end
@@ -461,16 +461,16 @@ local function persistCategory(category)
         { category.id, category.label, json.encode(category.defaults) })
     if saved == nil then
         print(('^1[qbdoorlock]^7 saving category %s failed: %s'):format(category.id, tostring(err or 'qbsql returned nothing')))
-        return false, err or 'The database refused the category. See the server console.'
+        return false, err or translate('err_db_category')
     end
     return true
 end
 
 -- Why this player can not manage categories right now, or nil.
 local function categoryProblem(source)
-    if not isAdmin(source) then return 'You do not have permission to manage door locks.' end
-    if not databaseReady then return 'Door storage is still starting.' end
-    if not categoriesReady then return 'Door categories are unavailable. Check the server console.' end
+    if not isAdmin(source) then return translate('err_no_permission_manage') end
+    if not databaseReady then return translate('err_storage_starting') end
+    if not categoriesReady then return translate('err_categories_unavailable') end
     return nil
 end
 
@@ -502,11 +502,11 @@ Kora.callback.register('qbdoorlock:server:managementCategoryCreated', function(s
     local problem = categoryProblem(source)
     if problem then return nil, problem end
     local label = categoryName(rawLabel)
-    if not label then return nil, 'Category name must be 1-64 characters.' end
+    if not label then return nil, translate('err_category_name_length') end
 
     local count = 0
     for _ in pairs(categories) do count = count + 1 end
-    if count >= CATEGORY_LIMIT then return nil, ('There can be at most %d categories.'):format(CATEGORY_LIMIT) end
+    if count >= CATEGORY_LIMIT then return nil, translate('err_category_limit', { count = CATEGORY_LIMIT }) end
 
     local defaults, err = DoorlockSchema.normalizeTemplate({ locked = true, lockpick = false }, Config.InteractionDistance)
     if not defaults then return nil, err end
@@ -522,9 +522,9 @@ Kora.callback.register('qbdoorlock:server:managementCategoryRenamed', function(s
     local problem = categoryProblem(source)
     if problem then return nil, problem end
     local category = type(id) == 'string' and categories[id] or nil
-    if not category then return nil, 'That category no longer exists.' end
+    if not category then return nil, translate('err_category_gone') end
     local label = categoryName(rawLabel)
-    if not label then return nil, 'Category name must be 1-64 characters.' end
+    if not label then return nil, translate('err_category_name_length') end
 
     local updated = { id = id, label = label, defaults = category.defaults }
     local saved, err = persistCategory(updated)
@@ -537,7 +537,7 @@ Kora.callback.register('qbdoorlock:server:managementCategoryDefaultsSaved', func
     local problem = categoryProblem(source)
     if problem then return nil, problem end
     local category = type(id) == 'string' and categories[id] or nil
-    if not category then return nil, 'That category no longer exists.' end
+    if not category then return nil, translate('err_category_gone') end
 
     local defaults, err = DoorlockSchema.normalizeTemplate(raw, Config.InteractionDistance)
     if not defaults then return nil, err end
@@ -558,7 +558,7 @@ end, { rateLimit = { max = 15, window = 10000 } })
 Kora.callback.register('qbdoorlock:server:managementCategoryDeleted', function(source, id)
     local problem = categoryProblem(source)
     if problem then return nil, problem end
-    if type(id) ~= 'string' or not categories[id] then return nil, 'That category no longer exists.' end
+    if type(id) ~= 'string' or not categories[id] then return nil, translate('err_category_gone') end
 
     for doorId, door in pairs(doors) do
         if door.category == id then
@@ -573,7 +573,7 @@ Kora.callback.register('qbdoorlock:server:managementCategoryDeleted', function(s
     end
 
     local removed, err = Kora.sql.execute('DELETE FROM `qbdoorlock_categories` WHERE `id` = ?', { id })
-    if removed == nil then return nil, err or 'Could not delete the category.' end
+    if removed == nil then return nil, err or translate('err_category_delete_failed') end
     categories[id] = nil
     return managementSnapshot(source)
 end, { rateLimit = { max = 5, window = 10000 } })
@@ -585,8 +585,8 @@ Kora.callback.register('qbdoorlock:server:managementCategoryDoorCreated', functi
     local problem = categoryProblem(source)
     if problem then return nil, problem end
     local category = type(categoryId) == 'string' and categories[categoryId] or nil
-    if not category then return nil, 'That category no longer exists.' end
-    if type(geometry) ~= 'table' then return nil, 'Aim at a door first.' end
+    if not category then return nil, translate('err_category_gone') end
+    if type(geometry) ~= 'table' then return nil, translate('err_aim_first') end
 
     local index = nextCategoryIndex(category.id)
     local id = ('%s-%d'):format(category.id, index)
@@ -603,7 +603,7 @@ Kora.callback.register('qbdoorlock:server:managementCategoryDoorCreated', functi
     local door, err = DoorlockSchema.normalize(raw, Config.InteractionDistance)
     if not door then return logRefusal(source, 'placing ' .. id, err) end
     local existing = findExistingDoor(door)
-    if existing then return nil, ('That door is already %s.'):format(existing) end
+    if existing then return nil, translate('err_door_already', { door = existing }) end
 
     local snapshot, saveErr = saveManagedDoor(source, id, raw, true)
     if not snapshot then return logRefusal(source, 'placing ' .. id, saveErr) end
@@ -611,32 +611,32 @@ Kora.callback.register('qbdoorlock:server:managementCategoryDoorCreated', functi
 end, { rateLimit = { max = 40, window = 10000 } })
 
 Kora.callback.register('qbdoorlock:server:managementDoorDeleted', function(source, id)
-    if not isAdmin(source) then return nil, 'You do not have permission to delete door locks.' end
-    if not databaseReady then return nil, 'Door storage is still starting.' end
+    if not isAdmin(source) then return nil, translate('err_no_permission_delete') end
+    if not databaseReady then return nil, translate('err_storage_starting') end
     local deleted, err = deleteDoor(id)
     if not deleted then return nil, err end
     return managementSnapshot(source)
 end, { rateLimit = { max = 5, window = 10000 } })
 
 Kora.callback.register('qbdoorlock:server:managementDoorsLinked', function(source, id, linkedId)
-    if not isAdmin(source) then return nil, 'You do not have permission to manage door locks.' end
-    if not databaseReady then return nil, 'Door storage is still starting.' end
+    if not isAdmin(source) then return nil, translate('err_no_permission_manage') end
+    if not databaseReady then return nil, translate('err_storage_starting') end
     if type(id) ~= 'string' or type(linkedId) ~= 'string' or id == linkedId or not getDoor(id) or not getDoor(linkedId) then
-        return nil, 'Choose two different configured doors.'
+        return nil, translate('err_choose_two')
     end
-    if linkedDoors[id] or linkedDoors[linkedId] then return nil, 'Unlink either door before creating a new pair.' end
+    if linkedDoors[id] or linkedDoors[linkedId] then return nil, translate('err_unlink_first') end
     local saved, err = Kora.sql.execute('INSERT INTO `qbdoorlock_links` (`door_id`, `linked_door_id`) VALUES (?, ?), (?, ?)', { id, linkedId, linkedId, id })
-    if saved == nil then return nil, err or 'Could not save the door link.' end
+    if saved == nil then return nil, err or translate('err_link_failed') end
     linkedDoors[id], linkedDoors[linkedId] = linkedId, id
     setDoorState(linkedId, states[id], source)
     return managementSnapshot(source)
 end, { rateLimit = { max = 10, window = 10000 } })
 
 Kora.callback.register('qbdoorlock:server:managementDoorsUnlinked', function(source, id)
-    if not isAdmin(source) then return nil, 'You do not have permission to manage door locks.' end
-    if not databaseReady then return nil, 'Door storage is still starting.' end
+    if not isAdmin(source) then return nil, translate('err_no_permission_manage') end
+    if not databaseReady then return nil, translate('err_storage_starting') end
     local unlinked, err = unlinkDoor(id)
-    if not unlinked then return nil, err or 'Could not remove the door link.' end
+    if not unlinked then return nil, err or translate('err_unlink_failed') end
     return managementSnapshot(source)
 end, { rateLimit = { max = 10, window = 10000 } })
 
@@ -651,12 +651,12 @@ end
 
 Kora.callback.register('qbdoorlock:server:lockpickStarted', function(source, id)
     local door = getDoor(id)
-    if not door or not door.lockpick or not isNearDoor(source, door) then return nil, 'That door cannot be picked.' end
-    if not Config.CanPickUnlockedDoors and not states[id] then return nil, 'That door is already unlocked.' end
+    if not door or not door.lockpick or not isNearDoor(source, door) then return nil, translate('cannot_pick') end
+    if not Config.CanPickUnlockedDoors and not states[id] then return nil, translate('err_already_unlocked') end
     local authorised, requirement, slot = hasAccess(source, id, door, true)
-    if not authorised then return nil, 'You need a lockpick.' end
+    if not authorised then return nil, translate('err_need_lockpick') end
     local authorization = Kora.minigames.authorizeProof(source, 'lockpick', difficultyOptions(door))
-    if not authorization then return nil, 'The lockpick challenge could not start.' end
+    if not authorization then return nil, translate('err_lockpick_start') end
     pendingLockpicks[source] = { id = id, authorization = authorization, requirement = requirement, slot = slot }
     return authorization
 end, { rateLimit = lockpickRateLimit() })
@@ -705,7 +705,7 @@ end, { rateLimit = { max = 5, window = 10000 } })
 local function commandPermission(source) return source > 0 and isAdmin(source) end
 
 Kora.commands.add(Config.AdminCommand or 'doorlocks', translate('manage_help'), {
-    { name = 'closest', help = 'Sort the editor by the closest door.' },
+    { name = 'closest', help = translate('closest_help') },
 }, false, function(source, args)
     Kora.events.push(source, 'qbdoorlock:client:managementOpened', args[1] == 'closest')
 end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
@@ -715,11 +715,11 @@ Kora.commands.add(Config.CreateCommand or 'adddoor', translate('create_help'), n
 end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
 
 local function importOxDoors()
-    if not databaseReady then return nil, 'Door storage is not ready.' end
+    if not databaseReady then return nil, translate('err_storage_not_ready') end
     local exists, existsErr = Kora.sql.scalar(
         "SELECT COUNT(*) FROM `information_schema`.`tables` WHERE `table_schema` = DATABASE() AND `table_name` = 'ox_doorlock'"
     )
-    if existsErr or tonumber(exists) ~= 1 then return nil, existsErr or 'The ox_doorlock table does not exist.' end
+    if existsErr or tonumber(exists) ~= 1 then return nil, existsErr or translate('err_no_ox_table') end
     local rows, queryErr = Kora.sql.query('SELECT `id`, `name`, `data` FROM `ox_doorlock` ORDER BY `id`')
     if queryErr then return nil, queryErr end
     local imported, skipped = 0, 0

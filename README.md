@@ -271,4 +271,5 @@ Run the plain-Lua property-policy suite from this resource directory:
 ```sh
 lua test/housing.lua
 lua test/access.lua
+lua test/locales.lua
 ```
