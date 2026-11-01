@@ -557,9 +557,9 @@ local function categoryView()
         }
     end
 
-    local members = doorsOfCategory(category)
     local rows = {}
-    for _, door in ipairs(members) do
+    for _, door in ipairs(doorsOfCategory(category)) do
+        local access = accessList(door.definition)
         rows[#rows + 1] = {
             id = door.id,
             label = door.label,
@@ -568,7 +568,7 @@ local function categoryView()
             tone = door.locked and 'warning' or 'success',
             metadata = {
                 { label = 'ID', value = door.id },
-                { label = 'Access', value = (#accessList(door.definition) > 0) and table.concat(accessList(door.definition), ', ') or 'Public' },
+                { label = 'Access', value = #access > 0 and table.concat(access, ', ') or 'Public' },
             },
             action = 'door:select:' .. door.id,
         }
