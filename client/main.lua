@@ -125,7 +125,10 @@ local function pickDoor(id)
     if not door or not door.lockpick or (not Config.CanPickUnlockedDoors and not door.locked) then return false end
     pickingLock = true
     CreateThread(function()
-        local authorization, err = QB.callback.trigger('qbdoorlock:server:lockpickStarted', id)
+        -- The shared callback layer raises (rather than returns) when the server's rate limit is hit,
+        -- which would otherwise leave pickingLock set and surface a script error.
+        local triggered, authorization, err = pcall(QB.callback.trigger, 'qbdoorlock:server:lockpickStarted', id)
+        if not triggered then err, authorization = authorization, nil end
         if not authorization then pickingLock = false; return notify(err or translate('cannot_pick'), 'error') end
         local playerPed = QB.cache.ped()
         TaskTurnPedToFaceCoord(playerPed, door.coords.x, door.coords.y, door.coords.z, 1000)
