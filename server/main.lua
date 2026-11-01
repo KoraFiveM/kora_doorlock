@@ -428,12 +428,7 @@ QB.callback.register('qbdoorlock:server:managementDoorCreated', function(source,
     return { doors = snapshot, id = id }
 end, { rateLimit = { max = 8, window = 10000 } })
 
--- ---------------------------------------------------------------------------
--- Categories (optional). A category is a name plus default settings for new doors, for quick and organised
--- creation: "police" with the police job on it, then every door placed in it starts from those settings and is
--- called police-1, police-2 ... Each door keeps its own copy, so changing one door never touches the others and
--- changing the category later only affects doors placed afterwards.
--- ---------------------------------------------------------------------------
+-- Categories: default settings for new doors. Each door keeps its own copy, so later category changes only affect doors placed afterwards.
 
 local CATEGORY_LIMIT = 100
 
