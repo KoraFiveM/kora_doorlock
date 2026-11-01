@@ -701,9 +701,11 @@ QB.commands.add(Config.AdminCommand or 'doorlocks', translate('manage_help'), {
     QB.events.push(source, 'qbdoorlock:client:managementOpened', args[1] == 'closest')
 end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
 
-QB.commands.add(Config.CreateCommand or 'adddoor', translate('create_help'), nil, false, function(source)
-    QB.events.push(source, 'qbdoorlock:client:targetedCreationRequested')
-end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
+for _, name in ipairs({ Config.CreateCommand or 'adddoor', 'newdoor', 'doordebug' }) do
+    QB.commands.add(name, translate('create_help'), nil, false, function(source)
+        QB.events.push(source, 'qbdoorlock:client:targetedCreationRequested')
+    end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
+end
 
 local function importOxDoors()
     if not databaseReady then return nil, 'Door storage is not ready.' end
