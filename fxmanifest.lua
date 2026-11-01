@@ -3,6 +3,7 @@ game 'gta5'
 lua54 'yes'
 
 name 'qbdoorlock'
+provide 'qb-doorlock'
 author 'qbcore2'
 description 'Config-driven, server-authoritative door locks with an in-game creator, built with qblib'
 version '2.0.0'

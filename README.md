@@ -30,6 +30,7 @@ Players with the permission selected by `Config.AdminPermission` and
   qbcrafting creator: a grid of doors you can search, a *Create new door* button
   and one page per door.
 - `/adddoor` to jump straight to *Create new door*.
+- `/newdoor` and `/doordebug` are aliases of `/adddoor` for stock qb-doorlock habits.
 - `/importoxdoors` to import an existing `ox_doorlock` database table. Imported
   IDs use the stable `ox-<number>` form; existing IDs are skipped.
 
@@ -243,3 +244,7 @@ the database layer, the client contract and the creator screen):
 ```sh
 test/run.sh
 ```
+
+## qb-doorlock compatibility
+
+The resource provides `qb-doorlock`. Client exports `GetDoorStates` (`{[id]=locked}`), `GetDoorList` (`{[id]=door}` with `doorLabel`/`textCoords` added), `GetNearbyDoors` (`{[id]=true}`) and `GetClosestDoor` (`{id, distance, data}`, `{}` when none) mirror the stock shapes. Door ids are Kora's string ids, not stock numeric indexes. `qb-doorlock:server:updateState` and `lockpicks:UseLockpick` are not handled here.
