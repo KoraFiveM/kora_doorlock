@@ -238,13 +238,11 @@ setDoorState = function(id, locked, source, usedItem)
     return true
 end
 
-local function encodeDefinition(door) return json.encode(DoorlockSchema.forNetwork(door)) end
-
 local function persistDoor(id, door)
     if not databaseReady then return false, 'Door storage is not ready.' end
     local saved, err = QB.sql.execute(
         'INSERT INTO `qbdoorlock_doors` (`id`, `definition`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `definition` = VALUES(`definition`)',
-        { id, encodeDefinition(door) })
+        { id, json.encode(DoorlockSchema.forNetwork(door)) })
     if saved == nil then
         print(('^1[qbdoorlock]^7 saving door %s failed: %s'):format(tostring(id), tostring(err or 'qbsql returned nothing')))
         return false, err or 'The database refused the door. See the server console.'

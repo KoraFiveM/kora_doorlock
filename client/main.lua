@@ -69,7 +69,7 @@ local function removeDoor(id)
 end
 
 local function playDoorSound(door, locked)
-    local fallback = Config.DefaultSounds and Config.DefaultSounds[locked and 'locked' or 'unlocked'] or nil
+    local fallback = Config.DefaultSounds and Config.DefaultSounds[locked and 'locked' or 'unlocked']
     local name = locked and door.lockSound or door.unlockSound
     local set = locked and door.lockSoundSet or door.unlockSoundSet
     name, set = name or (fallback and fallback.name), set or (fallback and fallback.set)
@@ -89,18 +89,6 @@ local function applyState(id, locked, source, silent)
     end
     if changed and not silent and QB.distance.player(door.coords, 20.0) then playDoorSound(door, door.locked) end
     if nearbyDoor == id then updatePrompt() end
-
-    if door.locked then
-        CreateThread(function()
-            local deadline = GetGameTimer() + 5000
-            while GetGameTimer() < deadline do
-                local closed = true
-                for index in ipairs(doorLeaves(door)) do if not IsDoorClosed(doorHash(id, index)) then closed = false; break end end
-                if closed then return end
-                Wait(0)
-            end
-        end)
-    end
 end
 
 local function getDoorIdFromEntity(entity)
@@ -150,7 +138,7 @@ local function registerTargetModel(model)
     local ok, targetId = pcall(QB.interact.addModel, model, {
         {
             label = translate('pick_lock'), icon = 'LockKeyhole', distance = 1.5,
-            canInteract = function(entity) return canTargetLockpick(entity) end,
+            canInteract = canTargetLockpick,
             action = function() if lockpickTarget then pickDoor(lockpickTarget) end end,
         },
     }, 1.5)
