@@ -38,7 +38,7 @@ local function doorDistance(door, position)
 end
 
 local function stateText(door)
-    return door.locked and 'unlock_door' or 'lock_door'
+    return translate(door.locked and 'unlock_door' or 'lock_door', { door = door.label or door.id or '' })
 end
 
 local dimensionCentres = {}
