@@ -2,6 +2,8 @@
   "title": "Cerradura de puerta",
   "lock_door": "Cerrar %{door}",
   "unlock_door": "Abrir %{door}",
+  "lock_door_generic": "Cerrar puerta",
+  "unlock_door_generic": "Abrir puerta",
   "pick_lock": "Forzar cerradura",
   "select_second": "Apunta a la segunda puerta",
   "cannot_pick": "Esa puerta no se puede forzar.",

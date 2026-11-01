@@ -2,6 +2,8 @@
   "title": "Serratura della porta",
   "lock_door": "Chiudi %{door}",
   "unlock_door": "Apri %{door}",
+  "lock_door_generic": "Chiudi porta",
+  "unlock_door_generic": "Apri porta",
   "pick_lock": "Scassina la serratura",
   "select_second": "Mira alla seconda porta",
   "cannot_pick": "Questa porta non può essere scassinata.",

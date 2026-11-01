@@ -2,6 +2,8 @@
   "title": "Zamek drzwi",
   "lock_door": "Zamknij %{door}",
   "unlock_door": "Otwórz %{door}",
+  "lock_door_generic": "Zamknij drzwi",
+  "unlock_door_generic": "Otwórz drzwi",
   "pick_lock": "Włam się do zamka",
   "select_second": "Wskaż drugie drzwi",
   "cannot_pick": "Tych drzwi nie można otworzyć wytrychem.",

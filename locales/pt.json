@@ -2,6 +2,8 @@
   "title": "Fechadura da porta",
   "lock_door": "Trancar %{door}",
   "unlock_door": "Destrancar %{door}",
+  "lock_door_generic": "Trancar porta",
+  "unlock_door_generic": "Destrancar porta",
   "pick_lock": "Arrombar fechadura",
   "select_second": "Aponte para a segunda porta",
   "cannot_pick": "Essa porta não pode ser arrombada.",

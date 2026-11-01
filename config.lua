@@ -35,6 +35,9 @@ Config.Debug = false
 -- own. These switches mirror ox_doorlock's presentation and access options.
 Config.Notify = false
 Config.DrawTextUI = true
+-- false (default): the interaction prompt shows the generic "Lock Door" / "Unlock Door" text.
+-- true: it includes the door label (e.g. "Unlock MRPD-F1-ChiefOffice"). The admin menu always shows the label.
+Config.ShowDoorNameInPrompt = false
 Config.DrawSprite = {
     unlocked = { dict = 'mpsafecracking', name = 'lock_open', width = 0.018, height = 0.018, color = { 255, 255, 255, 100 } },
     locked = { dict = 'mpsafecracking', name = 'lock_closed', width = 0.018, height = 0.018, color = { 255, 255, 255, 100 } },

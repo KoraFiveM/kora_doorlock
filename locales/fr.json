@@ -2,6 +2,8 @@
   "title": "Serrure de porte",
   "lock_door": "Verrouiller %{door}",
   "unlock_door": "Déverrouiller %{door}",
+  "lock_door_generic": "Verrouiller la porte",
+  "unlock_door_generic": "Déverrouiller la porte",
   "pick_lock": "Crocheter la serrure",
   "select_second": "Visez la deuxième porte",
   "cannot_pick": "Cette porte ne peut pas être crochetée.",

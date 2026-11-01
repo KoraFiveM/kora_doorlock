@@ -2,6 +2,8 @@
   "title": "Türschloss",
   "lock_door": "%{door} abschließen",
   "unlock_door": "%{door} aufschließen",
+  "lock_door_generic": "Tür abschließen",
+  "unlock_door_generic": "Tür aufschließen",
   "pick_lock": "Schloss knacken",
   "select_second": "Ziele auf die zweite Tür",
   "cannot_pick": "Diese Tür kann nicht geknackt werden.",

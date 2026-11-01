@@ -2,6 +2,8 @@
   "title": "Kapı kilidi",
   "lock_door": "%{door} kapısını kilitle",
   "unlock_door": "%{door} kapısının kilidini aç",
+  "lock_door_generic": "Kapıyı kilitle",
+  "unlock_door_generic": "Kapının kilidini aç",
   "pick_lock": "Kilidi maymuncukla aç",
   "select_second": "İkinci kapıya nişan al",
   "cannot_pick": "Bu kapı maymuncukla açılamaz.",

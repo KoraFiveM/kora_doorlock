@@ -2,6 +2,8 @@
   "title": "Deurslot",
   "lock_door": "%{door} vergrendelen",
   "unlock_door": "%{door} ontgrendelen",
+  "lock_door_generic": "Deur vergrendelen",
+  "unlock_door_generic": "Deur ontgrendelen",
   "pick_lock": "Slot openbreken",
   "select_second": "Richt op de tweede deur",
   "cannot_pick": "Die deur kan niet worden opengebroken.",

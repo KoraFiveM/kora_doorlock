@@ -2,6 +2,8 @@
   "title": "Дверной замок",
   "lock_door": "Закрыть %{door}",
   "unlock_door": "Открыть %{door}",
+  "lock_door_generic": "Закрыть дверь",
+  "unlock_door_generic": "Открыть дверь",
   "pick_lock": "Взломать замок",
   "select_second": "Наведитесь на вторую дверь",
   "cannot_pick": "Эту дверь нельзя взломать.",

@@ -2,6 +2,8 @@
   "title": "Door lock",
   "lock_door": "Lock %{door}",
   "unlock_door": "Unlock %{door}",
+  "lock_door_generic": "Lock Door",
+  "unlock_door_generic": "Unlock Door",
   "pick_lock": "Pick lock",
   "select_second": "Aim at the second door",
   "cannot_pick": "That door cannot be picked.",

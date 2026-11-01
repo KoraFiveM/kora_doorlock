@@ -38,7 +38,10 @@ local function doorDistance(door, position)
 end
 
 local function stateText(door)
-    return translate(door.locked and 'unlock_door' or 'lock_door', { door = door.label or door.id or '' })
+    if Config.ShowDoorNameInPrompt == true then
+        return translate(door.locked and 'unlock_door' or 'lock_door', { door = door.label or door.id or '' })
+    end
+    return translate(door.locked and 'unlock_door_generic' or 'lock_door_generic')
 end
 
 local dimensionCentres = {}

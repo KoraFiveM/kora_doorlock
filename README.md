@@ -273,3 +273,14 @@ lua test/housing.lua
 lua test/access.lua
 lua test/locales.lua
 ```
+
+## Interaction prompt text
+
+```lua
+Config.ShowDoorNameInPrompt = false -- default
+```
+
+`false` (the default): the prompt shown to players is the generic "Lock Door" / "Unlock Door" (translated through
+the `lock_door_generic` / `unlock_door_generic` locale keys), so internal door names such as `MRPD-F1-ChiefOffice`
+are not exposed. Set it to `true` to show the door label in the prompt (`lock_door` / `unlock_door` keys). The
+admin/creator menu always shows the internal door name.
