@@ -131,7 +131,6 @@ local function metadataText(metadata)
     return #parts > 0 and table.concat(parts, ', ') or nil
 end
 
--- The state line of a door, with its category when it has one.
 local function doorSummary(door)
     local category = door.definition.category and categoryEntry(door.definition.category)
     if category then return ('%s · %s'):format(stateText(door), category.label) end
@@ -475,10 +474,6 @@ local function doorView()
         },
     }
 end
-
--- ----------------------------------------------------------------------------
--- Categories
--- ----------------------------------------------------------------------------
 
 -- A short description of what a category gives new doors.
 local function defaultsText(defaults)
