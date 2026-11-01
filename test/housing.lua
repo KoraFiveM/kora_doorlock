@@ -15,6 +15,7 @@ local function setup(stored, linked, rateLimit)
     env.CreateThread = function(fn) f.threads[#f.threads + 1] = fn end
     env.AddEventHandler = function(name, fn) f.events[name] = fn end
     env.TriggerEvent = function() end
+    env.IsPlayerAceAllowed = function() return false end
     env.exports = setmetatable({ kora_core = { getPlayer = function() return { citizenid = 'CID1' } end } }, {
         __call = function(_, name, fn) f.exports[name] = fn end,
     })

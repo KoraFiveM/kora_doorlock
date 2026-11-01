@@ -67,14 +67,16 @@ local function setup(options)
     env.CreateThread = function() end
     env.AddEventHandler = function() end
     env.TriggerEvent = function() end
+    env.IsPlayerAceAllowed = function(_, object) return options.aces and options.aces[object] or false end
+    env.GetInvokingResource = function() return 'test' end
     env.Config = {
         Doors = { bank = { label = 'Bank', model = 1, coords = { x = 1, y = 2, z = 3 }, locked = true,
             groups = options.groups, characters = options.characters, passcode = options.passcode } },
-        InteractionDistance = 1.8, UnrestrictedDoorsOpenToAll = options.open, AdminPermission = 'admin',
+        InteractionDistance = 1.8, UnrestrictedDoorsOpenToAll = options.open, AdminPermission = 'admin', DoorAceExactOnly = options.aceExact,
         lockpickRateLimit = { max = 4, window = 10000 },
     }
     env.exports = setmetatable({}, {
-        __call = function() end,
+        __call = function(_, name, fn) f.exported = f.exported or {}; f.exported[name] = fn end,
         __index = function() return { getPlayer = function() return options.player end, getItemsByName = function() return {} end } end,
     })
     env.Kora = setmetatable({
@@ -159,6 +161,21 @@ H.test('server: a wrong passcode does not unlock', function()
     f.toggle(); H.assertEqual(f.states.bank, true)
     f = setup({ player = civilian, passcode = '1234', supplied = '1234' })
     f.toggle(); H.assertEqual(f.states.bank, false)
+end)
+
+H.test('server: a refused toggle re-sends the real door state to the player', function()
+    local f = setup({ player = civilian })
+    f.toggle()
+    local last = f.pushes[#f.pushes]
+    H.assertEqual(last.name, 'qbdoorlock:client:doorStateChanged')
+    H.assertEqual(last.state, true)
+end)
+
+H.test('server: group.<id> / command.<id> objects do not open a door when DoorAceExactOnly is on', function()
+    local f = setup({ player = civilian, aces = { ['group.bank'] = true, ['command.bank'] = true }, aceExact = true })
+    f.toggle(); H.assertEqual(f.states.bank, true)
+    f = setup({ player = civilian, aces = { ['doorlock.bank'] = true }, aceExact = true })
+    f.toggle(); H.assertEqual(f.states.bank, false, 'the documented doorlock.<id> ACE still works')
 end)
 
 H.report('kora_doorlock authorisation')

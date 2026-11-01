@@ -194,6 +194,18 @@ Config.UnrestrictedDoorsOpenToAll = false -- default
 The server enforces this on every toggle; if the option is missing or `nil` it behaves as `false`. It can also
 be changed from the kora_lib config panel and applies the next time someone uses a door.
 
+## Server authority
+
+Every toggle is decided on the server; the client only sends the request. A refused toggle shows the access-denied
+notification and re-sends the door's real state to that player.
+
+```lua
+Config.DoorAceExactOnly = true     -- door ACEs are only doorlock.<id> / doorlock.<label>
+```
+
+Set `DoorAceExactOnly = false` to also accept `group.<id>` / `command.<id>` objects as older versions did.
+Note that a `doorAuthorization` hook returning `true` still grants access, so only register hooks you trust.
+
 ## ACE access
 
 Grant one door by its stable ID (recommended) or its ox-compatible display

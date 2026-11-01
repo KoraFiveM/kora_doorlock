@@ -121,8 +121,18 @@ local function isNearDoor(source, door)
     return false
 end
 
+local function aceAllowed(source, object)
+    local allowed = IsPlayerAceAllowed(source, object)
+    return allowed == true or allowed == 1
+end
+
 local function hasDoorAce(source, id, door)
     if Config.PlayerAceAuthorised and Kora.permissions.hasPermission(source, Config.PlayerAcePermission or 'doorlock') then return true end
+    if Config.DoorAceExactOnly ~= false then
+        -- Only the documented `doorlock.<id>` / `doorlock.<label>` objects count. hasPermission would also test
+        -- `group.<id>` and `command.<id>`, which a door named like a group or command could match for the wrong players.
+        return aceAllowed(source, 'doorlock.' .. id) or aceAllowed(source, 'doorlock.' .. door.label)
+    end
     return Kora.permissions.hasPermission(source, id, 'doorlock')
         or Kora.permissions.hasPermission(source, door.label, 'doorlock')
 end
@@ -667,6 +677,8 @@ Kora.events.register('qbdoorlock:server:doorToggled', function(source, id)
     local authorised, requirement, slot = hasAccess(source, id, door, false)
     if not authorised then
         Kora.notify.send(source, { title = translate('title'), message = translate('access_denied'), type = 'error' })
+        -- The server state is the truth: put the client's door back to it.
+        if states[id] ~= nil then Kora.events.push(source, 'qbdoorlock:client:doorStateChanged', id, states[id], nil) end
         return
     end
     if getDoor(id) ~= door or not isNearDoor(source, door) then return end

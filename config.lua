@@ -51,6 +51,9 @@ Config.PlayerAcePermission = 'doorlock'
 -- Who may toggle a door that has no groups, characters, items or passcode. false (the secure default) means
 -- only admins and door-specific ACEs can; true restores the older "anyone can use an unrestricted door" behaviour.
 Config.UnrestrictedDoorsOpenToAll = false
+-- true (default): a door ACE is only `doorlock.<doorId>` or `doorlock.<door label>`. false restores the older lookup, which
+-- also matched `group.<id>` and `command.<id>` objects.
+Config.DoorAceExactOnly = true
 Config.LockpickItems = { 'lockpick' }
 Config.CanPickUnlockedDoors = false
 Config.LockpickDifficulty = { 'easy', 'easy', 'medium' }
@@ -96,6 +99,10 @@ if Kora and Kora.config and Kora.config.adopt then
     Config.UnrestrictedDoorsOpenToAll = Kora.config.boolean(Config.UnrestrictedDoorsOpenToAll, {
         label = 'Unrestricted doors open to everyone',
         description = 'When off (recommended), a door with no groups, characters, key items or passcode can only be locked or unlocked by admins and players with a door ACE. Turn on to let any player toggle such doors, as older versions did. Applies the next time someone uses a door.',
+    })
+    Config.DoorAceExactOnly = Kora.config.boolean(Config.DoorAceExactOnly, {
+        label = 'Door ACEs match doorlock.<id> only',
+        description = 'When on (recommended), a per-door ACE is only doorlock.<door id> or doorlock.<door label>. Turn off to also accept group.<id> and command.<id> objects as older versions did. Applies the next time someone uses a door.',
     })
     Config.DrawSpriteCentered = Kora.config.boolean(Config.DrawSpriteCentered, {
         label = 'Centre lock icon on single doors',
