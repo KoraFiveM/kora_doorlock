@@ -190,7 +190,7 @@ Config.UnrestrictedDoorsOpenToAll = false -- default
 ```
 
 `false` (the default): doors with no job/item/citizen requirements (no `groups`, `items`, `characters` or
-`passcode`) can only be used by admins and players with a door ACE. Set it to `true` to let everyone use them.
+`passcode`) can only be used by players with a door ACE (and admins, if `Config.AdminsBypassDoorAccess` is on). Set it to `true` to let everyone use them.
 The server enforces this on every toggle; if the option is missing or `nil` it behaves as `false`. It can also
 be changed from the kora_lib config panel and applies the next time someone uses a door.
 
@@ -202,6 +202,16 @@ notification and re-sends the door's real state to that player.
 ```lua
 Config.DoorAceExactOnly = true     -- door ACEs are only doorlock.<id> / doorlock.<label>
 ```
+
+```lua
+Config.AdminsBypassDoorAccess = false -- default
+```
+
+`false` (the default): the admin permission (`Config.AdminPermission`, which `group.admin` holds by default)
+only grants the `/doorlocks` menu. At the door an admin needs the door's job/gang grade, character, key item,
+passcode or door ACE like any other player, and can still lock or unlock any door from the menu. Set it to `true`
+to let admins use every door with **E**, as older versions did. With `Config.Debug = true` the server prints which
+check granted or refused each toggle.
 
 Set `DoorAceExactOnly = false` to also accept `group.<id>` / `command.<id>` objects as older versions did.
 Note that a `doorAuthorization` hook returning `true` still grants access, so only register hooks you trust.

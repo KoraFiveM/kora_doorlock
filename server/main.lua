@@ -146,8 +146,9 @@ local function hasAccess(source, id, door, lockpick, skipLinked)
         usedRequirement, usedSlot = findItem(source, requirements)
         authorised = usedRequirement ~= nil
     else
+        -- The admin permission manages doors from the menu; it only opens doors at the door when configured to.
         local facts = {
-            ace = authorised, admin = not authorised and isAdmin(source),
+            ace = authorised, admin = not authorised and Config.AdminsBypassDoorAccess == true and isAdmin(source),
             character = DoorlockAccess.matchesCharacter(player, door.characters),
             group = DoorlockAccess.matchesGroup(player, door.groups),
             restricted = DoorlockAccess.isRestricted(door),
@@ -157,6 +158,11 @@ local function hasAccess(source, id, door, lockpick, skipLinked)
             facts.item = usedRequirement ~= nil
         end
         authorised = DoorlockAccess.decide(facts, Config.UnrestrictedDoorsOpenToAll)
+        if Config.Debug then
+            print(('[kora_doorlock] access %s for player %s on %s: ace=%s admin=%s character=%s group=%s item=%s restricted=%s'):format(
+                authorised and 'granted' or 'refused', tostring(source), tostring(id), tostring(facts.ace), tostring(facts.admin),
+                tostring(facts.character), tostring(facts.group), tostring(facts.item == true), tostring(facts.restricted)))
+        end
     end
 
     if not lockpick and not authorised and door.passcode then

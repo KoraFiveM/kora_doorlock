@@ -73,6 +73,7 @@ local function setup(options)
         Doors = { bank = { label = 'Bank', model = 1, coords = { x = 1, y = 2, z = 3 }, locked = true,
             groups = options.groups, characters = options.characters, passcode = options.passcode } },
         InteractionDistance = 1.8, UnrestrictedDoorsOpenToAll = options.open, AdminPermission = 'admin', DoorAceExactOnly = options.aceExact,
+        AdminsBypassDoorAccess = options.adminBypass,
         lockpickRateLimit = { max = 4, window = 10000 },
     }
     env.exports = setmetatable({}, {
@@ -119,10 +120,31 @@ H.test('server: the same door toggles for everyone when the config opts in', fun
     H.assertEqual(f.states.bank, false)
 end)
 
-H.test('server: an admin can toggle an unrestricted door', function()
+H.test('server: the admin permission alone does not open a door by default', function()
+    -- The /doorlocks creator needs the admin permission, so whoever creates a door is an admin; that must not
+    -- let them (or any other admin) unlock it with E.
     local f = setup({ player = civilian, admin = true })
     f.toggle()
-    H.assertEqual(f.states.bank, false)
+    H.assertEqual(f.states.bank, true)
+    H.assertEqual(f.notifications[1].message, 'access_denied')
+    f = setup({ player = civilian, admin = true, groups = { police = 0 } })
+    f.toggle()
+    H.assertEqual(f.states.bank, true, 'an admin without the job is refused on a job door')
+end)
+
+H.test('server: admins can toggle every door when AdminsBypassDoorAccess is on', function()
+    local f = setup({ player = civilian, admin = true, adminBypass = true })
+    f.toggle(); H.assertEqual(f.states.bank, false)
+    f = setup({ player = civilian, admin = true, adminBypass = true, groups = { police = 0 } })
+    f.toggle(); H.assertEqual(f.states.bank, false)
+    f = setup({ player = civilian, adminBypass = true })
+    f.toggle(); H.assertEqual(f.states.bank, true, 'the switch never helps a non-admin')
+end)
+
+H.test('server: an admin with the door job can still toggle it', function()
+    local cop = { citizenid = 'COP1', job = { name = 'police', grade = { level = 0 } } }
+    local f = setup({ player = cop, admin = true, groups = { police = 0 } })
+    f.toggle(); H.assertEqual(f.states.bank, false)
 end)
 
 H.test('server: a matching job grade can toggle, a wrong job or a low grade cannot', function()

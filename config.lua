@@ -49,8 +49,12 @@ Config.DrawSpriteOffset = vector3(0.0, 0.0, 0.0)
 Config.PlayerAceAuthorised = false
 Config.PlayerAcePermission = 'doorlock'
 -- Who may toggle a door that has no groups, characters, items or passcode. false (the secure default) means
--- only admins and door-specific ACEs can; true restores the older "anyone can use an unrestricted door" behaviour.
+-- only door-specific ACEs can (plus admins when AdminsBypassDoorAccess is on); true restores the older "anyone can use an unrestricted door" behaviour.
 Config.UnrestrictedDoorsOpenToAll = false
+-- false (default): holding Config.AdminPermission does NOT open every door with E. Admins are treated like any
+-- other player at the door and lock/unlock doors from the /doorlocks menu instead. true restores the older
+-- "admins can use every door" behaviour.
+Config.AdminsBypassDoorAccess = false
 -- true (default): a door ACE is only `doorlock.<doorId>` or `doorlock.<door label>`. false restores the older lookup, which
 -- also matched `group.<id>` and `command.<id>` objects.
 Config.DoorAceExactOnly = true
@@ -98,7 +102,11 @@ if Kora and Kora.config and Kora.config.adopt then
     }, { advanced = true })
     Config.UnrestrictedDoorsOpenToAll = Kora.config.boolean(Config.UnrestrictedDoorsOpenToAll, {
         label = 'Unrestricted doors open to everyone',
-        description = 'When off (recommended), a door with no groups, characters, key items or passcode can only be locked or unlocked by admins and players with a door ACE. Turn on to let any player toggle such doors, as older versions did. Applies the next time someone uses a door.',
+        description = 'When off (recommended), a door with no groups, characters, key items or passcode can only be locked or unlocked by players with a door ACE (and admins when "Admins can use every door" is on). Turn on to let any player toggle such doors, as older versions did. Applies the next time someone uses a door.',
+    })
+    Config.AdminsBypassDoorAccess = Kora.config.boolean(Config.AdminsBypassDoorAccess, {
+        label = 'Admins can use every door',
+        description = 'When off (recommended), the admin permission that opens the /doorlocks menu does not let a player lock or unlock doors with E: they need the door\'s job, character, key item, passcode or door ACE like everyone else, and can still change any door from the /doorlocks menu. Turn on to let admins use every door with E. Applies the next time someone uses a door.',
     })
     Config.DoorAceExactOnly = Kora.config.boolean(Config.DoorAceExactOnly, {
         label = 'Door ACEs match doorlock.<id> only',
