@@ -77,6 +77,10 @@ Config.AdminCommand = 'doorlocks'
 Config.CreateCommand = 'adddoor'
 Config.ImportCommand = 'importoxdoors'
 
+-- true (default): provide the stock qb-doorlock client exports (GetDoorStates, GetDoorList, GetNearbyDoors,
+-- GetClosestDoor) and register the /newdoor and /doordebug aliases of the create command. false skips both.
+Config.compat = { qbDoorlockExports = true }
+
 -- Registers this resource-owned configuration with kora_lib without changing its public Config table.
 if Kora and Kora.config and Kora.config.adopt then
     Config.Doors = Kora.config.map(Config.Doors, Kora.config.object({}), {
@@ -120,5 +124,11 @@ if Kora and Kora.config and Kora.config.adopt then
         label = 'Lock icon offset',
         description = 'World-space metres added to the lock icon position (x, y, z) after centring. Leave at 0, 0, 0 unless a door style needs the icon nudged. Applies immediately.',
     })
+    Config.compat = Kora.config.object({
+        qbDoorlockExports = Kora.config.boolean(Config.compat.qbDoorlockExports, {
+            label = 'qb-doorlock compatibility exports and commands',
+            description = 'Provides the stock qb-doorlock client exports (GetDoorStates, GetDoorList, GetNearbyDoors, GetClosestDoor) and the /newdoor and /doordebug aliases of the create command. Door ids are Kora string ids, not stock numeric indexes. Restart kora_doorlock to apply saved changes.',
+        }),
+    }, { advanced = true })
     Config = Kora.config.adopt(Config)
 end

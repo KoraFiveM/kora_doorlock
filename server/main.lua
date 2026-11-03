@@ -728,9 +728,16 @@ Kora.commands.add(Config.AdminCommand or 'doorlocks', translate('manage_help'), 
     Kora.events.push(source, 'qbdoorlock:client:managementOpened', args[1] == 'closest')
 end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
 
-Kora.commands.add(Config.CreateCommand or 'adddoor', translate('create_help'), nil, false, function(source)
-    Kora.events.push(source, 'qbdoorlock:client:targetedCreationRequested')
-end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
+local createCommands = { Config.CreateCommand or 'adddoor' }
+if not Config.compat or Config.compat.qbDoorlockExports ~= false then
+    createCommands[#createCommands + 1] = 'newdoor'
+    createCommands[#createCommands + 1] = 'doordebug'
+end
+for _, name in ipairs(createCommands) do
+    Kora.commands.add(name, translate('create_help'), nil, false, function(source)
+        Kora.events.push(source, 'qbdoorlock:client:targetedCreationRequested')
+    end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
+end
 
 local function importOxDoors()
     if not databaseReady then return nil, translate('err_storage_not_ready') end

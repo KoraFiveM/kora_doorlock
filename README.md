@@ -32,6 +32,8 @@ continue to emit `qbdoorlock:stateChanged(source, id, locked, usedItem)`.
 
 ## Install
 
+Deploy this resource in a folder named `kora_doorlock` (consumers such as kora_housing use `exports.kora_doorlock` and the dependency name `kora_doorlock`; the manifest `name` does not rename the folder). The older qblib-based doorlock repo is archived and must never run alongside it.
+
 The test server already starts `kora_doorlock` after `kora_lib`, `kora_sql`, and
 `kora_core`. The database tables are created through kora_sql migrations at startup.
 
@@ -48,6 +50,7 @@ Players with the permission selected by `Config.AdminPermission` and
   kora_crafting creator: a grid of doors you can search, a *Create new door* button
   and one page per door.
 - `/adddoor` to jump straight to *Create new door*.
+- `/newdoor` and `/doordebug` are aliases of `/adddoor` for stock qb-doorlock habits (`Config.compat.qbDoorlockExports`).
 - `/importoxdoors` to import an existing `ox_doorlock` database table. Imported
   IDs use the stable `ox-<number>` form; existing IDs are skipped.
 
@@ -306,3 +309,8 @@ Config.ShowDoorNameInPrompt = false -- default
 the `lock_door_generic` / `unlock_door_generic` locale keys), so internal door names such as `MRPD-F1-ChiefOffice`
 are not exposed. Set it to `true` to show the door label in the prompt (`lock_door` / `unlock_door` keys). The
 admin/creator menu always shows the internal door name.
+
+## qb-doorlock compatibility
+
+The resource provides `qb-doorlock`. Client exports `GetDoorStates` (`{[id]=locked}`), `GetDoorList` (`{[id]=door}` with `doorLabel`/`textCoords` added), `GetNearbyDoors` (`{[id]=true}`) and `GetClosestDoor` (`{id, distance, data}`, `{}` when none) mirror the stock shapes. Door ids are Kora's string ids, not stock numeric indexes. `qb-doorlock:server:updateState` and `lockpicks:UseLockpick` are not handled here.
+The exports and the `/newdoor` / `/doordebug` aliases can be switched off with `Config.compat.qbDoorlockExports = false` (restart to apply).

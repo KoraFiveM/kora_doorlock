@@ -3,8 +3,9 @@ game 'gta5'
 lua54 'yes'
 
 name 'kora_doorlock'
--- Keep the legacy resource name resolvable for exports['qbdoorlock'] callers.
+-- Keep the legacy resource names resolvable for exports['qbdoorlock'] / exports['qb-doorlock'] callers.
 provide 'qbdoorlock'
+provide 'qb-doorlock'
 author 'qbcore2'
 description 'Config-driven, server-authoritative door locks with an in-game creator, built with kora_lib'
 version '2.0.0'

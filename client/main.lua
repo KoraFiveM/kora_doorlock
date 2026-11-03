@@ -451,3 +451,43 @@ end)
 
 ---@return boolean started
 exports('pickClosestDoor', function() return pickDoor(nearbyDoor) end)
+
+-- qb-doorlock compatibility exports. Door ids are Kora's string ids, not stock numeric indexes.
+if not Config.compat or Config.compat.qbDoorlockExports ~= false then
+    local function compatDoor(id)
+        local door = doors[id]
+        if not door then return nil end
+        local copy = {}
+        for key, value in pairs(door) do
+            if key ~= 'entities' then copy[key] = value end
+        end
+        copy.doorLabel, copy.textCoords = door.label, door.coords
+        return copy
+    end
+
+    Kora.compat.provideExport('qb-doorlock', 'GetDoorStates', function()
+        local result = {}
+        for id, door in pairs(doors) do result[id] = door.locked end
+        return result
+    end)
+
+    Kora.compat.provideExport('qb-doorlock', 'GetDoorList', function()
+        local result = {}
+        for id in pairs(doors) do result[id] = compatDoor(id) end
+        return result
+    end)
+
+    Kora.compat.provideExport('qb-doorlock', 'GetNearbyDoors', function()
+        local result = {}
+        for id in pairs(activeDoors) do
+            if doors[id] then result[id] = true end
+        end
+        return result
+    end)
+
+    Kora.compat.provideExport('qb-doorlock', 'GetClosestDoor', function()
+        local door = nearbyDoor and doors[nearbyDoor]
+        if not door then return {} end
+        return { id = nearbyDoor, distance = doorDistance(door, GetEntityCoords(PlayerPedId())), data = compatDoor(nearbyDoor) }
+    end)
+end
