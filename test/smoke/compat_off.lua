@@ -27,7 +27,8 @@ _G.Kora = setmetatable({
 }, { __index = function() return any end })
 _G.vec3 = vec
 _G.vector3 = vec
-_G.Config = { InteractionDistance = 1.8, compat = { qbDoorlockExports = false } }
+-- The client script loads with the default (on); the saved config only arrives afterwards.
+_G.Config = { InteractionDistance = 1.8, compat = { qbDoorlockExports = true } }
 local threads = {}
 _G.CreateThread = function(fn) threads[#threads + 1] = fn end
 _G.Wait = function() error('stop', 0) end
@@ -42,9 +43,28 @@ setmetatable(_G, { __index = function(_, key) if type(key) == 'string' and key:m
 dofile(resourceDir .. 'shared/schema.lua')
 dofile(resourceDir .. 'client/main.lua')
 
+pushes['qbdoorlock:client:doorDefinitionUpdated']('front', {
+    label = 'Front door', model = 1, coords = { x = 1.0, y = 0.0, z = 0.0 }, heading = 0.0, distance = 2.0,
+}, true)
+zones[1].onEnter()
+position = vec(1.5, 0, 0)
+for _, thread in ipairs(threads) do pcall(thread) end
 
-harness.test('no qb-doorlock exports are provided when Config.compat.qbDoorlockExports is false', function()
-    harness.assertEqual(next(provided), nil)
+harness.test('the exports are registered at load and return data while the flag is on', function()
+    harness.assertEqual(provided.GetDoorStates().front, true)
+    harness.assertEqual(provided.GetDoorList().front.doorLabel, 'Front door')
+    harness.assertEqual(provided.GetNearbyDoors().front, true)
+    harness.assertEqual(provided.GetClosestDoor().id, 'front')
+end)
+
+harness.test('flipping Config.compat.qbDoorlockExports off after load empties every export', function()
+    Config.compat.qbDoorlockExports = false
+    for _, name in ipairs({ 'GetDoorStates', 'GetDoorList', 'GetNearbyDoors', 'GetClosestDoor' }) do
+        harness.assertTrue(type(provided[name]) == 'function', name)
+        harness.assertEqual(next(provided[name]()), nil, name)
+    end
+    Config.compat.qbDoorlockExports = true
+    harness.assertEqual(provided.GetDoorStates().front, true, 'turning it back on restores the data')
 end)
 
 harness.report('doorlock compat off')

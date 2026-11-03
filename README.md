@@ -313,4 +313,4 @@ admin/creator menu always shows the internal door name.
 ## qb-doorlock compatibility
 
 The resource provides `qb-doorlock`. Client exports `GetDoorStates` (`{[id]=locked}`), `GetDoorList` (`{[id]=door}` with `doorLabel`/`textCoords` added), `GetNearbyDoors` (`{[id]=true}`) and `GetClosestDoor` (`{id, distance, data}`, `{}` when none) mirror the stock shapes. Door ids are Kora's string ids, not stock numeric indexes. `qb-doorlock:server:updateState` and `lockpicks:UseLockpick` are not handled here.
-The exports and the `/newdoor` / `/doordebug` aliases can be switched off with `Config.compat.qbDoorlockExports = false` (restart to apply).
+The exports and the `/newdoor` / `/doordebug` aliases can be switched off with `Config.compat.qbDoorlockExports = false`. The exports then return empty tables straight away; the command aliases are registered at start, so restart `kora_doorlock` for those. `GetDoorList` / `GetClosestDoor().data` return plain data only (label, coords, model, heading, locked, distance and similar), never the access rules or passcode. Note that stock qb-doorlock's `/doordebug` is a debug toggle; here it is only an alias of `/adddoor`.

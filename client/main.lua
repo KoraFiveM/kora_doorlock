@@ -453,41 +453,58 @@ end)
 exports('pickClosestDoor', function() return pickDoor(nearbyDoor) end)
 
 -- qb-doorlock compatibility exports. Door ids are Kora's string ids, not stock numeric indexes.
-if not Config.compat or Config.compat.qbDoorlockExports ~= false then
-    local function compatDoor(id)
-        local door = doors[id]
-        if not door then return nil end
-        local copy = {}
-        for key, value in pairs(door) do
-            if key ~= 'entities' then copy[key] = value end
-        end
-        copy.doorLabel, copy.textCoords = door.label, door.coords
-        return copy
-    end
-
-    Kora.compat.provideExport('qb-doorlock', 'GetDoorStates', function()
-        local result = {}
-        for id, door in pairs(doors) do result[id] = door.locked end
-        return result
-    end)
-
-    Kora.compat.provideExport('qb-doorlock', 'GetDoorList', function()
-        local result = {}
-        for id in pairs(doors) do result[id] = compatDoor(id) end
-        return result
-    end)
-
-    Kora.compat.provideExport('qb-doorlock', 'GetNearbyDoors', function()
-        local result = {}
-        for id in pairs(activeDoors) do
-            if doors[id] then result[id] = true end
-        end
-        return result
-    end)
-
-    Kora.compat.provideExport('qb-doorlock', 'GetClosestDoor', function()
-        local door = nearbyDoor and doors[nearbyDoor]
-        if not door then return {} end
-        return { id = nearbyDoor, distance = doorDistance(door, GetEntityCoords(PlayerPedId())), data = compatDoor(nearbyDoor) }
-    end)
+-- The client only learns the saved config after load, so the exports are always registered and check
+-- Config.compat.qbDoorlockExports on every call, returning the stock empty shape while it is off.
+local function compatEnabled()
+    return not Config.compat or Config.compat.qbDoorlockExports ~= false
 end
+
+-- Plain data only (no zone objects, tokens or access rules), because other resources receive this over exports.
+local COMPAT_DOOR_FIELDS = {
+    'id', 'label', 'coords', 'model', 'heading', 'locked', 'state', 'distance', 'maxDistance', 'category',
+    'automatic', 'doorRate', 'holdOpen', 'hideUi', 'lockpick', 'autoLock',
+}
+
+local function compatDoor(id)
+    local door = doors[id]
+    if not door then return nil end
+    local copy = {}
+    for _, key in ipairs(COMPAT_DOOR_FIELDS) do copy[key] = door[key] end
+    if door.doors then
+        copy.doors = {}
+        for index, leaf in ipairs(door.doors) do
+            copy.doors[index] = { model = leaf.model, coords = leaf.coords, heading = leaf.heading }
+        end
+    end
+    copy.doorLabel, copy.textCoords = door.label, door.coords
+    return copy
+end
+
+Kora.compat.provideExport('qb-doorlock', 'GetDoorStates', function()
+    local result = {}
+    if not compatEnabled() then return result end
+    for id, door in pairs(doors) do result[id] = door.locked end
+    return result
+end)
+
+Kora.compat.provideExport('qb-doorlock', 'GetDoorList', function()
+    local result = {}
+    if not compatEnabled() then return result end
+    for id in pairs(doors) do result[id] = compatDoor(id) end
+    return result
+end)
+
+Kora.compat.provideExport('qb-doorlock', 'GetNearbyDoors', function()
+    local result = {}
+    if not compatEnabled() then return result end
+    for id in pairs(activeDoors) do
+        if doors[id] then result[id] = true end
+    end
+    return result
+end)
+
+Kora.compat.provideExport('qb-doorlock', 'GetClosestDoor', function()
+    local door = compatEnabled() and nearbyDoor and doors[nearbyDoor]
+    if not door then return {} end
+    return { id = nearbyDoor, distance = doorDistance(door, GetEntityCoords(PlayerPedId())), data = compatDoor(nearbyDoor) }
+end)

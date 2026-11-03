@@ -85,7 +85,7 @@ Config.compat = { qbDoorlockExports = true }
 if Kora and Kora.config and Kora.config.adopt then
     Config.Doors = Kora.config.map(Config.Doors, Kora.config.object({}), {
         label = 'Authored doors',
-        description = 'Defines permanent door IDs and their authored access, model, coordinate, lock, sound, and optional auto-lock settings. Each row key is the stable door ID and each value is a JSON object. In-game database edits override these defaults; verify model hashes and coordinates before restarting qbdoorlock.',
+        description = 'Defines permanent door IDs and their authored access, model, coordinate, lock, sound, and optional auto-lock settings. Each row key is the stable door ID and each value is a JSON object. In-game database edits override these defaults; verify model hashes and coordinates before restarting kora_doorlock.',
     })
     Config.DefaultAutoLock = Kora.config.optional(Config.DefaultAutoLock,
         Kora.config.integer(0, { min = 0 }), {
@@ -127,7 +127,7 @@ if Kora and Kora.config and Kora.config.adopt then
     Config.compat = Kora.config.object({
         qbDoorlockExports = Kora.config.boolean(Config.compat.qbDoorlockExports, {
             label = 'qb-doorlock compatibility exports and commands',
-            description = 'Provides the stock qb-doorlock client exports (GetDoorStates, GetDoorList, GetNearbyDoors, GetClosestDoor) and the /newdoor and /doordebug aliases of the create command. Door ids are Kora string ids, not stock numeric indexes. Restart kora_doorlock to apply saved changes.',
+            description = 'Provides the stock qb-doorlock client exports (GetDoorStates, GetDoorList, GetNearbyDoors, GetClosestDoor) and the /newdoor and /doordebug aliases of the create command. Door ids are Kora string ids, not stock numeric indexes. The exports follow the saved value immediately; the command aliases are registered at start, so restart kora_doorlock for those.',
         }),
     }, { advanced = true })
     Config = Kora.config.adopt(Config)

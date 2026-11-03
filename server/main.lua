@@ -257,7 +257,7 @@ local function persistDoor(id, door, releasePolicy)
         'INSERT INTO `qbdoorlock_doors` (`id`, `definition`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `definition` = VALUES(`definition`)',
         { id, encodeDefinition(door) })
     if not saved then
-        print(('^1[qbdoorlock]^7 saving door %s failed: %s'):format(tostring(id), tostring(err or 'qbsql returned nothing')))
+        print(('^1[qbdoorlock]^7 saving door %s failed: %s'):format(tostring(id), tostring(err or 'kora_sql returned nothing')))
         return false, err or translate('err_db_door')
     end
     return true
@@ -476,7 +476,7 @@ local function persistCategory(category)
         'INSERT INTO `qbdoorlock_categories` (`id`, `label`, `defaults`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `defaults` = VALUES(`defaults`)',
         { category.id, category.label, json.encode(category.defaults) })
     if saved == nil then
-        print(('^1[qbdoorlock]^7 saving category %s failed: %s'):format(category.id, tostring(err or 'qbsql returned nothing')))
+        print(('^1[qbdoorlock]^7 saving category %s failed: %s'):format(category.id, tostring(err or 'kora_sql returned nothing')))
         return false, err or translate('err_db_category')
     end
     return true
@@ -728,12 +728,12 @@ Kora.commands.add(Config.AdminCommand or 'doorlocks', translate('manage_help'), 
     Kora.events.push(source, 'qbdoorlock:client:managementOpened', args[1] == 'closest')
 end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
 
-local createCommands = { Config.CreateCommand or 'adddoor' }
+local createCommands = { [Config.CreateCommand or 'adddoor'] = true }
+-- /newdoor and /doordebug are stock qb-doorlock names; here both open the same creator as /adddoor.
 if not Config.compat or Config.compat.qbDoorlockExports ~= false then
-    createCommands[#createCommands + 1] = 'newdoor'
-    createCommands[#createCommands + 1] = 'doordebug'
+    createCommands.newdoor, createCommands.doordebug = true, true
 end
-for _, name in ipairs(createCommands) do
+for name in pairs(createCommands) do
     Kora.commands.add(name, translate('create_help'), nil, false, function(source)
         Kora.events.push(source, 'qbdoorlock:client:targetedCreationRequested')
     end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
@@ -925,7 +925,7 @@ end
 CreateThread(function()
     if not Kora.sql.ready(60000) then
         initializationComplete = true
-        return print('^1[qbdoorlock]^7 qbsql was not ready; persistent door management is disabled.')
+        return print('^1[qbdoorlock]^7 kora_sql was not ready; persistent door management is disabled.')
     end
     
     local rows, queryErr = Kora.sql.query('SELECT `id`, `definition` FROM `qbdoorlock_doors`')

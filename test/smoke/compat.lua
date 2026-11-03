@@ -67,6 +67,22 @@ harness.test('GetDoorStates and GetDoorList use the stock id keyed shapes', func
     harness.assertEqual(list.front.entities, nil)
 end)
 
+harness.test('compat door data is plain data: no zones, tokens, functions or access rules', function()
+    local function assertPlain(value, path)
+        harness.assertTrue(type(value) ~= 'function', path .. ' is a function')
+        if type(value) == 'table' then
+            for key, child in pairs(value) do assertPlain(child, path .. '.' .. tostring(key)) end
+        end
+    end
+    local entry = provided.GetDoorList().front
+    assertPlain(entry, 'front')
+    for _, key in ipairs({ 'interactionZone', 'streamZone', 'enforceToken', 'entities', 'passcode', 'groups', 'characters', 'items' }) do
+        harness.assertEqual(entry[key], nil, key)
+    end
+    harness.assertEqual(entry.id, 'front')
+    harness.assertEqual(entry.distance, 2.0)
+end)
+
 harness.test('GetNearbyDoors and GetClosestDoor follow the interaction zones', function()
     harness.assertEqual(next(provided.GetNearbyDoors()), nil)
     harness.assertEqual(next(provided.GetClosestDoor()), nil)

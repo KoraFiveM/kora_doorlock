@@ -75,7 +75,9 @@ local function setup(options)
         InteractionDistance = 1.8, UnrestrictedDoorsOpenToAll = options.open, AdminPermission = 'admin', DoorAceExactOnly = options.aceExact,
         AdminsBypassDoorAccess = options.adminBypass,
         lockpickRateLimit = { max = 4, window = 10000 },
+        compat = options.compat,
     }
+    f.commands = {}
     env.exports = setmetatable({}, {
         __call = function(_, name, fn) f.exported = f.exported or {}; f.exported[name] = fn end,
         __index = function() return { getPlayer = function() return options.player end, getItemsByName = function() return {} end } end,
@@ -90,12 +92,12 @@ local function setup(options)
             push = function(_, name, id, state) f.pushes[#f.pushes + 1] = { name = name, id = id, state = state } end,
         },
         callback = { register = function() end, trigger = function() return options.supplied end },
+        commands = { add = function(name) f.commands[name] = (f.commands[name] or 0) + 1 end },
         sql = { ready = function() return false end },
         timers = { setTimeout = function() return 1 end, clearTimeout = function() end },
         resources = { serverRegistry = function() return { track = function() end, untrack = function() end } end },
         compat = { isCallable = function() return true end },
     }, { __index = function() return setmetatable({}, { __index = function() return function() end end }) end })
-    env.QB = env.Kora -- the committed sources use the QB alias, the working tree uses Kora
     local file = assert(io.open('server/main.lua')); local source = file:read('a'); file:close()
     local chunk = assert(load(source .. '\nreturn states', '@server/main.lua', 't', env))
     f.states = chunk()
@@ -198,6 +200,19 @@ H.test('server: group.<id> / command.<id> objects do not open a door when DoorAc
     f.toggle(); H.assertEqual(f.states.bank, true)
     f = setup({ player = civilian, aces = { ['doorlock.bank'] = true }, aceExact = true })
     f.toggle(); H.assertEqual(f.states.bank, false, 'the documented doorlock.<id> ACE still works')
+end)
+
+H.test('server: /newdoor and /doordebug are registered only while compat.qbDoorlockExports is on', function()
+    local f = setup({ player = civilian, compat = { qbDoorlockExports = true } })
+    H.assertEqual(f.commands.adddoor, 1, 'adddoor is always registered')
+    H.assertEqual(f.commands.newdoor, 1)
+    H.assertEqual(f.commands.doordebug, 1)
+    f = setup({ player = civilian })
+    H.assertEqual(f.commands.newdoor, 1, 'missing compat table keeps the default (on)')
+    f = setup({ player = civilian, compat = { qbDoorlockExports = false } })
+    H.assertEqual(f.commands.adddoor, 1)
+    H.assertEqual(f.commands.newdoor, nil)
+    H.assertEqual(f.commands.doordebug, nil)
 end)
 
 H.report('kora_doorlock authorisation')
