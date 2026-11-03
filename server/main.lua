@@ -920,7 +920,18 @@ CreateThread(function()
         initializationComplete = true
         return print('^1[qbdoorlock]^7 qbsql was not ready; persistent door management is disabled.')
     end
-    
+
+    local reports, schemaErr = Kora.sql.ensureTables(DoorlockTables)
+    if schemaErr then
+        initializationComplete = true
+        return print(('^1[qbdoorlock]^7 database schema failed; persistent door management is disabled: %s'):format(tostring(schemaErr)))
+    end
+    for _, report in ipairs(reports or {}) do
+        for _, warning in ipairs(report.warnings or {}) do
+            print(('^3[qbdoorlock]^7 %s: %s'):format(tostring(report.table), tostring(warning)))
+        end
+    end
+
     local rows, queryErr = Kora.sql.query('SELECT `id`, `definition` FROM `qbdoorlock_doors`')
     if queryErr then initializationComplete = true; return print(('^1[qbdoorlock]^7 could not load doors: %s'):format(queryErr)) end
     for _, row in ipairs(rows) do
@@ -946,7 +957,6 @@ CreateThread(function()
     end
     for id, linkedId in pairs(candidates) do if candidates[linkedId] == id then linkedDoors[id] = linkedId end end
 
-    Kora.sql.execute('CREATE TABLE IF NOT EXISTS `qbdoorlock_categories` (`id` VARCHAR(48) NOT NULL, `label` VARCHAR(96) NOT NULL, `defaults` LONGTEXT NOT NULL, `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci')
     local categoryRows, categoryErr = Kora.sql.query('SELECT `id`, `label`, `defaults` FROM `qbdoorlock_categories`')
     if categoryErr then
         print(('^3[qbdoorlock]^7 could not load door categories: %s'):format(tostring(categoryErr)))

@@ -30,12 +30,10 @@ client_scripts {
 }
 
 server_scripts {
+    'server/tables.lua',
     'server/main.lua',
 }
 
 files {
     'locales/*.json',
-    'sql/001_doors.sql',
-    'sql/002_links.sql',
-    'sql/003_categories.sql',
 }

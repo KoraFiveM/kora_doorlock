@@ -28,7 +28,7 @@ local function setup(stored, linked, rateLimit)
         events = { register = function(name, fn) f.actions[name] = fn end, push = function() end },
         commands = { add = function() end }, distance = { player = function() return true end },
         notify = { send = function() end }, timers = { clearTimeout = function() end },
-        sql = { ready = function() return true end, query = function(sql)
+        sql = { ready = function() return true end, ensureTables = function(specs) f.ensured = specs; return {} end, query = function(sql)
             if linked and sql:find('qbdoorlock_links', 1, true) then return { { door_id = 'test', linked_door_id = 'partner' }, { door_id = 'partner', linked_door_id = 'test' } } end
             if stored and sql:find('qbdoorlock_doors', 1, true) then return { { id = 'test', definition = stored } } end
             return {}
@@ -40,6 +40,7 @@ local function setup(stored, linked, rateLimit)
     }
     assert(loadfile('shared/schema.lua', 't', env))()
     assert(loadfile('shared/access.lua', 't', env))()
+    assert(loadfile('server/tables.lua', 't', env))()
     assert(loadfile('server/main.lua', 't', env))()
     f.threads[1]()
     function f.toggle() f.actions['qbdoorlock:server:doorToggled'](1, 'test') end
@@ -128,6 +129,14 @@ H.test('lockpick callback uses Config.lockpickRateLimit and falls back to the or
     H.assertEqual(options.rateLimit.max, 9); H.assertEqual(options.rateLimit.window, 3000)
     local fallback = setup().callbackOptions['qbdoorlock:server:lockpickStarted']
     H.assertEqual(fallback.rateLimit.max, 4); H.assertEqual(fallback.rateLimit.window, 10000)
+end)
+
+H.test('the startup thread ensures the declared tables before loading doors', function()
+    local f = setup()
+    local names = {}
+    for _, spec in ipairs(f.ensured or {}) do names[spec.name] = true end
+    H.assertEqual(#f.ensured, 3)
+    H.assertEqual(names.qbdoorlock_doors and names.qbdoorlock_links and names.qbdoorlock_categories, true)
 end)
 
 H.report('qbdoorlock property policies')
