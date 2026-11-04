@@ -251,6 +251,33 @@ function DoorlockSchema.normalizeTemplate(raw, fallbackDistance)
     return defaults
 end
 
+---A multi-leaf door's `doors` list, or a single-leaf door's own
+---model/coords/heading wrapped as a one-entry list -- the shape every caller
+---that walks a door's leaves actually needs.
+function DoorlockSchema.leaves(door)
+    return door.doors or { { model = door.model, coords = door.coords, heading = door.heading } }
+end
+
+---The numeric suffix of `id` if it matches `categoryId .. '-<number>'`
+---exactly (e.g. "police-12" under category "police" -> 12), or nil otherwise.
+function DoorlockSchema.categorySuffix(id, categoryId)
+    local prefix = categoryId .. '-'
+    if id:sub(1, #prefix) ~= prefix then return nil end
+    local number = id:sub(#prefix + 1):match('^%d+$')
+    return number and tonumber(number) or nil
+end
+
+---Highest DoorlockSchema.categorySuffix found across `ids` (a list of id
+---strings) for `categoryId`, or 0 if none match.
+function DoorlockSchema.highestCategorySuffix(ids, categoryId)
+    local highest = 0
+    for _, id in ipairs(ids) do
+        local number = DoorlockSchema.categorySuffix(id, categoryId)
+        if number and number > highest then highest = number end
+    end
+    return highest
+end
+
 function DoorlockSchema.copyCoords(coords)
     return { x = coords.x, y = coords.y, z = coords.z }
 end

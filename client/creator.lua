@@ -42,12 +42,7 @@ local function confirmed(title, message)
     return answer and answer.confirmed == true
 end
 
-local function copyValue(value)
-    if type(value) ~= 'table' then return value end
-    local copy = {}
-    for key, entry in pairs(value) do copy[key] = copyValue(entry) end
-    return copy
-end
+local copyValue = Kora.util.deepClone
 
 local function removedAt(list, index)
     local kept = {}
@@ -86,14 +81,10 @@ end
 
 -- The id the next door placed in a category will get: one above the highest category-N that exists.
 local function nextCategoryId(category)
-    local prefix, highest = category.id .. '-', 0
-    for _, door in ipairs(doors) do
-        if door.id:sub(1, #prefix) == prefix then
-            local number = door.id:sub(#prefix + 1)
-            if number:match('^%d+$') then highest = math.max(highest, tonumber(number)) end
-        end
-    end
-    return ('%s%d'):format(prefix, highest + 1), highest + 1
+    local ids = {}
+    for _, door in ipairs(doors) do ids[#ids + 1] = door.id end
+    local highest = DoorlockSchema.highestCategorySuffix(ids, category.id)
+    return ('%s-%d'):format(category.id, highest + 1), highest + 1
 end
 
 -- The forms and cards that edit "a door" also edit a category's defaults. The defaults are shown as a stand-in
@@ -106,9 +97,7 @@ local function prefixOf(door)
     return door.isCategory and 'cd:' or 'door:'
 end
 
-local function leavesOf(definition)
-    return definition.doors or { { model = definition.model, coords = definition.coords, heading = definition.heading } }
-end
+local leavesOf = DoorlockSchema.leaves
 
 local function accessList(definition)
     local access = {}
@@ -500,10 +489,8 @@ local function doorsOfCategory(category)
         if door.definition.category == category.id then list[#list + 1] = door end
     end
     -- police-2 before police-10: by the number at the end of the id, then by name.
-    local prefix = category.id .. '-'
     local function number(door)
-        local n = door.id:sub(1, #prefix) == prefix and door.id:sub(#prefix + 1):match('^%d+$')
-        return n and tonumber(n) or math.huge
+        return DoorlockSchema.categorySuffix(door.id, category.id) or math.huge
     end
     table.sort(list, function(a, b)
         local na, nb = number(a), number(b)

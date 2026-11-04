@@ -14,9 +14,7 @@ local function isAdmin(source)
     return Kora.permissions.hasPermission(source, Config.AdminPermission or 'admin', Config.AdminPermissionPrefix or 'qbcore')
 end
 
-local function doorLeaves(door)
-    return door.doors or { { model = door.model, coords = door.coords, heading = door.heading } }
-end
+local doorLeaves = DoorlockSchema.leaves
 
 local function getDoor(id)
     return type(id) == 'string' and doors[id] or nil
@@ -116,9 +114,11 @@ exports('registerHook', registerHook)
 exports('removeHook', removeHook)
 
 local function isNearDoor(source, door)
-    local maxDistance = door.distance + 1.0
-    for _, leaf in ipairs(doorLeaves(door)) do if Kora.distance.player(source, leaf.coords, maxDistance) then return true end end
-    return false
+    local found = Kora.distance.playerNearAny(source, doorLeaves(door), {
+        radius = door.distance + 1.0,
+        coordsOf = function(leaf) return leaf.coords end,
+    })
+    return found
 end
 
 local function aceAllowed(source, object)
@@ -382,13 +382,17 @@ Kora.callback.register('qbdoorlock:server:managementStateSet', function(source, 
 end, { rateLimit = { max = 20, window = 10000 } })
 
 -- Door IDs are made from the door name, so the creator never has to ask for one.
-local function uniqueDoorId(label)
+local function uniqueSlug(label, maxLength, fallback, taken)
     local base = tostring(label or ''):lower():gsub('[^a-z0-9]+', '-'):gsub('^-', ''):gsub('-$', '')
-    if base == '' then base = 'door' end
-    base = base:sub(1, 56):gsub('-$', '')
+    if base == '' then base = fallback end
+    base = base:sub(1, maxLength):gsub('-$', '')
     local id, suffix = base, 1
-    while doors[id] do suffix = suffix + 1; id = ('%s-%d'):format(base, suffix) end
+    while taken[id] do suffix = suffix + 1; id = ('%s-%d'):format(base, suffix) end
     return id
+end
+
+local function uniqueDoorId(label)
+    return uniqueSlug(label, 56, 'door', doors)
 end
 
 local function saveManagedDoor(source, id, raw, creating, sourceDoorId)
@@ -443,12 +447,7 @@ end, { rateLimit = { max = 8, window = 10000 } })
 
 local CATEGORY_LIMIT = 100
 
-local function copyDefinition(value)
-    if type(value) ~= 'table' then return value end
-    local copy = {}
-    for key, entry in pairs(value) do copy[key] = copyDefinition(entry) end
-    return copy
-end
+local copyDefinition = Kora.util.deepClone
 
 local function categoryName(value)
     if type(value) ~= 'string' then return nil end
@@ -458,12 +457,7 @@ local function categoryName(value)
 end
 
 local function uniqueCategoryId(label)
-    local base = label:lower():gsub('[^a-z0-9]+', '-'):gsub('^-', ''):gsub('-$', '')
-    if base == '' then base = 'category' end
-    base = base:sub(1, 40):gsub('-$', '')
-    local id, suffix = base, 1
-    while categories[id] do suffix = suffix + 1; id = ('%s-%d'):format(base, suffix) end
-    return id
+    return uniqueSlug(label, 40, 'category', categories)
 end
 
 local function persistCategory(category)
@@ -487,14 +481,9 @@ end
 
 -- The next number for a category's doors: one above the highest police-N that exists.
 local function nextCategoryIndex(categoryId)
-    local prefix, highest = categoryId .. '-', 0
-    for id in pairs(doors) do
-        if id:sub(1, #prefix) == prefix then
-            local number = id:sub(#prefix + 1)
-            if number:match('^%d+$') then highest = math.max(highest, tonumber(number)) end
-        end
-    end
-    return highest + 1
+    local ids = {}
+    for id in pairs(doors) do ids[#ids + 1] = id end
+    return DoorlockSchema.highestCategorySuffix(ids, categoryId) + 1
 end
 
 -- The id of a door that already covers one of this door's leaves, so one door is never placed twice.
