@@ -257,7 +257,7 @@ local function persistDoor(id, door, releasePolicy)
         'INSERT INTO `qbdoorlock_doors` (`id`, `definition`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `definition` = VALUES(`definition`)',
         { id, encodeDefinition(door) })
     if not saved then
-        print(('^1[qbdoorlock]^7 saving door %s failed: %s'):format(tostring(id), tostring(err or 'qbsql returned nothing')))
+        print(('^1[qbdoorlock]^7 saving door %s failed: %s'):format(tostring(id), tostring(err or 'kora_sql returned nothing')))
         return false, err or translate('err_db_door')
     end
     return true
@@ -439,12 +439,7 @@ Kora.callback.register('qbdoorlock:server:managementDoorCreated', function(sourc
     return { doors = snapshot, id = id }
 end, { rateLimit = { max = 8, window = 10000 } })
 
--- ---------------------------------------------------------------------------
--- Categories (optional). A category is a name plus default settings for new doors, for quick and organised
--- creation: "police" with the police job on it, then every door placed in it starts from those settings and is
--- called police-1, police-2 ... Each door keeps its own copy, so changing one door never touches the others and
--- changing the category later only affects doors placed afterwards.
--- ---------------------------------------------------------------------------
+-- Categories: default settings for new doors. Each door keeps its own copy, so later category changes only affect doors placed afterwards.
 
 local CATEGORY_LIMIT = 100
 
@@ -476,7 +471,7 @@ local function persistCategory(category)
         'INSERT INTO `qbdoorlock_categories` (`id`, `label`, `defaults`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `defaults` = VALUES(`defaults`)',
         { category.id, category.label, json.encode(category.defaults) })
     if saved == nil then
-        print(('^1[qbdoorlock]^7 saving category %s failed: %s'):format(category.id, tostring(err or 'qbsql returned nothing')))
+        print(('^1[qbdoorlock]^7 saving category %s failed: %s'):format(category.id, tostring(err or 'kora_sql returned nothing')))
         return false, err or translate('err_db_category')
     end
     return true
@@ -728,9 +723,11 @@ Kora.commands.add(Config.AdminCommand or 'doorlocks', translate('manage_help'), 
     Kora.events.push(source, 'qbdoorlock:client:managementOpened', args[1] == 'closest')
 end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
 
-Kora.commands.add(Config.CreateCommand or 'adddoor', translate('create_help'), nil, false, function(source)
-    Kora.events.push(source, 'qbdoorlock:client:targetedCreationRequested')
-end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
+for _, name in ipairs({ Config.CreateCommand or 'adddoor', 'newdoor', 'doordebug' }) do
+    Kora.commands.add(name, translate('create_help'), nil, false, function(source)
+        Kora.events.push(source, 'qbdoorlock:client:targetedCreationRequested')
+    end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
+end
 
 local function importOxDoors()
     if not databaseReady then return nil, translate('err_storage_not_ready') end
@@ -918,7 +915,7 @@ end
 CreateThread(function()
     if not Kora.sql.ready(60000) then
         initializationComplete = true
-        return print('^1[qbdoorlock]^7 qbsql was not ready; persistent door management is disabled.')
+        return print('^1[qbdoorlock]^7 kora_sql was not ready; persistent door management is disabled.')
     end
 
     local reports, schemaErr = Kora.sql.ensureTables(DoorlockTables)

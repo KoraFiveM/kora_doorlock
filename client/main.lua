@@ -115,7 +115,7 @@ local function removeDoor(id, keepSystem)
 end
 
 local function playDoorSound(door, locked)
-    local fallback = Config.DefaultSounds and Config.DefaultSounds[locked and 'locked' or 'unlocked'] or nil
+    local fallback = Config.DefaultSounds and Config.DefaultSounds[locked and 'locked' or 'unlocked']
     local name = locked and door.lockSound or door.unlockSound
     local set = locked and door.lockSoundSet or door.unlockSoundSet
     name, set = name or (fallback and fallback.name), set or (fallback and fallback.set)
@@ -210,7 +210,7 @@ local function registerTargetModel(model)
     local ok, targetId = pcall(Kora.interact.addModel, model, {
         {
             label = translate('pick_lock'), icon = 'LockKeyhole', distance = 1.5,
-            canInteract = function(entity) return canTargetLockpick(entity) end,
+            canInteract = canTargetLockpick,
             action = function() if lockpickTarget then pickDoor(lockpickTarget) end end,
         },
     }, 1.5)
@@ -451,3 +451,40 @@ end)
 
 ---@return boolean started
 exports('pickClosestDoor', function() return pickDoor(nearbyDoor) end)
+
+local function compatDoor(id)
+    local door = doors[id]
+    if not door then return nil end
+    local copy = {}
+    for key, value in pairs(door) do
+        if key ~= 'entities' then copy[key] = value end
+    end
+    copy.doorLabel, copy.textCoords = door.label, door.coords
+    return copy
+end
+
+Kora.compat.provideExport('qb-doorlock', 'GetDoorStates', function()
+    local result = {}
+    for id, door in pairs(doors) do result[id] = door.locked end
+    return result
+end)
+
+Kora.compat.provideExport('qb-doorlock', 'GetDoorList', function()
+    local result = {}
+    for id in pairs(doors) do result[id] = compatDoor(id) end
+    return result
+end)
+
+Kora.compat.provideExport('qb-doorlock', 'GetNearbyDoors', function()
+    local result = {}
+    for id in pairs(activeDoors) do
+        if doors[id] then result[id] = true end
+    end
+    return result
+end)
+
+Kora.compat.provideExport('qb-doorlock', 'GetClosestDoor', function()
+    local door = nearbyDoor and doors[nearbyDoor]
+    if not door then return {} end
+    return { id = nearbyDoor, distance = doorDistance(door, GetEntityCoords(PlayerPedId())), data = compatDoor(nearbyDoor) }
+end)

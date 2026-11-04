@@ -134,7 +134,6 @@ local function metadataText(metadata)
     return #parts > 0 and table.concat(parts, ', ') or nil
 end
 
--- The state line of a door, with its category when it has one.
 local function doorSummary(door)
     local category = door.definition.category and categoryEntry(door.definition.category)
     if category then return ('%s · %s'):format(stateText(door), category.label) end
@@ -479,10 +478,6 @@ local function doorView()
     }
 end
 
--- ----------------------------------------------------------------------------
--- Categories
--- ----------------------------------------------------------------------------
-
 -- A short description of what a category gives new doors.
 local function defaultsText(defaults)
     local parts = { defaults.locked == false and T('defaults_unlocked') or T('defaults_locked') }
@@ -565,9 +560,9 @@ local function categoryView()
         }
     end
 
-    local members = doorsOfCategory(category)
     local rows = {}
-    for _, door in ipairs(members) do
+    for _, door in ipairs(doorsOfCategory(category)) do
+        local access = accessList(door.definition)
         rows[#rows + 1] = {
             id = door.id,
             label = door.label,
@@ -576,7 +571,7 @@ local function categoryView()
             tone = door.locked and 'warning' or 'success',
             metadata = {
                 { label = T('meta_id'), value = door.id },
-                { label = T('access_title'), value = (#accessList(door.definition) > 0) and table.concat(accessList(door.definition), ', ') or T('access_public') },
+                { label = T('access_title'), value = #access > 0 and table.concat(access, ', ') or T('access_public') },
             },
             action = 'door:select:' .. door.id,
         }

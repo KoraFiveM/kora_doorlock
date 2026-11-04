@@ -48,6 +48,7 @@ Players with the permission selected by `Config.AdminPermission` and
   kora_crafting creator: a grid of doors you can search, a *Create new door* button
   and one page per door.
 - `/adddoor` to jump straight to *Create new door*.
+- `/newdoor` and `/doordebug` are aliases of `/adddoor` for stock qb-doorlock habits.
 - `/importoxdoors` to import an existing `ox_doorlock` database table. Imported
   IDs use the stable `ox-<number>` form; existing IDs are skipped.
 
@@ -287,12 +288,10 @@ exports.kora_doorlock:removeHook(hookId)
 
 ## Tests
 
-Run the plain-Lua property-policy suite from this resource directory:
+Run the plain-Lua suite from this resource directory (it needs a sibling `kora_core` resource for its test harness):
 
 ```sh
-lua test/housing.lua
-lua test/access.lua
-lua test/locales.lua
+test/run.sh
 ```
 
 ## Interaction prompt text
@@ -305,3 +304,7 @@ Config.ShowDoorNameInPrompt = false -- default
 the `lock_door_generic` / `unlock_door_generic` locale keys), so internal door names such as `MRPD-F1-ChiefOffice`
 are not exposed. Set it to `true` to show the door label in the prompt (`lock_door` / `unlock_door` keys). The
 admin/creator menu always shows the internal door name.
+
+## qb-doorlock compatibility
+
+The resource provides `qb-doorlock`. Client exports `GetDoorStates` (`{[id]=locked}`), `GetDoorList` (`{[id]=door}` with `doorLabel`/`textCoords` added), `GetNearbyDoors` (`{[id]=true}`) and `GetClosestDoor` (`{id, distance, data}`, `{}` when none) mirror the stock shapes. Door ids are Kora's string ids, not stock numeric indexes. `qb-doorlock:server:updateState` and `lockpicks:UseLockpick` are not handled here.
