@@ -254,7 +254,7 @@ local function persistDoor(id, door, releasePolicy)
     -- Ordinary editor saves must not remove another resource's access boundary.
     if not releasePolicy and doors[id] and doors[id].policyOwner then door.policyOwner = doors[id].policyOwner end
     local saved, err = Kora.sql.execute(
-        'INSERT INTO `qbdoorlock_doors` (`id`, `definition`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `definition` = VALUES(`definition`)',
+        'INSERT INTO `kora_doorlock_doors` (`id`, `definition`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `definition` = VALUES(`definition`)',
         { id, encodeDefinition(door) })
     if not saved then
         print(('^1[qbdoorlock]^7 saving door %s failed: %s'):format(tostring(id), tostring(err or 'kora_sql returned nothing')))
@@ -313,7 +313,7 @@ end
 local function unlinkDoor(id)
     local linkedId = linkedDoors[id]
     if not linkedId then return true end
-    local removed, err = Kora.sql.update('DELETE FROM `qbdoorlock_links` WHERE `door_id` IN (?, ?)', { id, linkedId })
+    local removed, err = Kora.sql.update('DELETE FROM `kora_doorlock_links` WHERE `door_id` IN (?, ?)', { id, linkedId })
     if removed == nil then return false, err end
     linkedDoors[id], linkedDoors[linkedId] = nil, nil
     return true
@@ -325,10 +325,10 @@ local function deleteDoor(id)
     if not unlinked then return false, unlinkErr end
     local query, parameters
     if configuredIds[id] then
-        query = 'INSERT INTO `qbdoorlock_doors` (`id`, `definition`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `definition` = VALUES(`definition`)'
+        query = 'INSERT INTO `kora_doorlock_doors` (`id`, `definition`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `definition` = VALUES(`definition`)'
         parameters = { id, json.encode({ deleted = true }) }
     else
-        query, parameters = 'DELETE FROM `qbdoorlock_doors` WHERE `id` = ?', { id }
+        query, parameters = 'DELETE FROM `kora_doorlock_doors` WHERE `id` = ?', { id }
     end
     local removed, err = Kora.sql.execute(query, parameters)
     if removed == nil then return false, err or translate('err_delete_failed') end
@@ -468,7 +468,7 @@ end
 
 local function persistCategory(category)
     local saved, err = Kora.sql.execute(
-        'INSERT INTO `qbdoorlock_categories` (`id`, `label`, `defaults`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `defaults` = VALUES(`defaults`)',
+        'INSERT INTO `kora_doorlock_categories` (`id`, `label`, `defaults`) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE `label` = VALUES(`label`), `defaults` = VALUES(`defaults`)',
         { category.id, category.label, json.encode(category.defaults) })
     if saved == nil then
         print(('^1[qbdoorlock]^7 saving category %s failed: %s'):format(category.id, tostring(err or 'kora_sql returned nothing')))
@@ -583,7 +583,7 @@ Kora.callback.register('qbdoorlock:server:managementCategoryDeleted', function(s
         end
     end
 
-    local removed, err = Kora.sql.execute('DELETE FROM `qbdoorlock_categories` WHERE `id` = ?', { id })
+    local removed, err = Kora.sql.execute('DELETE FROM `kora_doorlock_categories` WHERE `id` = ?', { id })
     if removed == nil then return nil, err or translate('err_category_delete_failed') end
     categories[id] = nil
     return managementSnapshot(source)
@@ -636,7 +636,7 @@ Kora.callback.register('qbdoorlock:server:managementDoorsLinked', function(sourc
         return nil, translate('err_choose_two')
     end
     if linkedDoors[id] or linkedDoors[linkedId] then return nil, translate('err_unlink_first') end
-    local saved, err = Kora.sql.execute('INSERT INTO `qbdoorlock_links` (`door_id`, `linked_door_id`) VALUES (?, ?), (?, ?)', { id, linkedId, linkedId, id })
+    local saved, err = Kora.sql.execute('INSERT INTO `kora_doorlock_links` (`door_id`, `linked_door_id`) VALUES (?, ?), (?, ?)', { id, linkedId, linkedId, id })
     if saved == nil then return nil, err or translate('err_link_failed') end
     linkedDoors[id], linkedDoors[linkedId] = linkedId, id
     setDoorState(linkedId, states[id], source)
@@ -929,7 +929,7 @@ CreateThread(function()
         end
     end
 
-    local rows, queryErr = Kora.sql.query('SELECT `id`, `definition` FROM `qbdoorlock_doors`')
+    local rows, queryErr = Kora.sql.query('SELECT `id`, `definition` FROM `kora_doorlock_doors`')
     if queryErr then initializationComplete = true; return print(('^1[qbdoorlock]^7 could not load doors: %s'):format(queryErr)) end
     for _, row in ipairs(rows) do
         local ok, raw = pcall(json.decode, row.definition)
@@ -945,7 +945,7 @@ CreateThread(function()
             print(('^3[qbdoorlock]^7 skipped malformed stored door %s'):format(tostring(row.id)))
         end
     end
-    local links, linksErr = Kora.sql.query('SELECT `door_id`, `linked_door_id` FROM `qbdoorlock_links`')
+    local links, linksErr = Kora.sql.query('SELECT `door_id`, `linked_door_id` FROM `kora_doorlock_links`')
     if linksErr then initializationComplete = true; return print(('^1[qbdoorlock]^7 could not load door links: %s'):format(linksErr)) end
     local candidates = {}
     for _, row in ipairs(links) do
@@ -954,7 +954,7 @@ CreateThread(function()
     end
     for id, linkedId in pairs(candidates) do if candidates[linkedId] == id then linkedDoors[id] = linkedId end end
 
-    local categoryRows, categoryErr = Kora.sql.query('SELECT `id`, `label`, `defaults` FROM `qbdoorlock_categories`')
+    local categoryRows, categoryErr = Kora.sql.query('SELECT `id`, `label`, `defaults` FROM `kora_doorlock_categories`')
     if categoryErr then
         print(('^3[qbdoorlock]^7 could not load door categories: %s'):format(tostring(categoryErr)))
     else

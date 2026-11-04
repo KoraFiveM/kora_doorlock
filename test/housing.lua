@@ -29,12 +29,12 @@ local function setup(stored, linked, rateLimit)
         commands = { add = function() end }, distance = { player = function() return true end },
         notify = { send = function() end }, timers = { clearTimeout = function() end },
         sql = { ready = function() return true end, ensureTables = function(specs) f.ensured = specs; return {} end, query = function(sql)
-            if linked and sql:find('qbdoorlock_links', 1, true) then return { { door_id = 'test', linked_door_id = 'partner' }, { door_id = 'partner', linked_door_id = 'test' } } end
-            if stored and sql:find('qbdoorlock_doors', 1, true) then return { { id = 'test', definition = stored } } end
+            if linked and sql:find('kora_doorlock_links', 1, true) then return { { door_id = 'test', linked_door_id = 'partner' }, { door_id = 'partner', linked_door_id = 'test' } } end
+            if stored and sql:find('kora_doorlock_doors', 1, true) then return { { id = 'test', definition = stored } } end
             return {}
         end, execute = function(sql, params)
             if f.failSave then return nil, 'controlled SQL failure' end
-            if sql:find('INSERT INTO `qbdoorlock_doors`', 1, true) then f.saved = params[2] end
+            if sql:find('INSERT INTO `kora_doorlock_doors`', 1, true) then f.saved = params[2] end
             return { affectedRows = 1 }
         end },
     }
@@ -136,7 +136,7 @@ H.test('the startup thread ensures the declared tables before loading doors', fu
     local names = {}
     for _, spec in ipairs(f.ensured or {}) do names[spec.name] = true end
     H.assertEqual(#f.ensured, 3)
-    H.assertEqual(names.qbdoorlock_doors and names.qbdoorlock_links and names.qbdoorlock_categories, true)
+    H.assertEqual(names.kora_doorlock_doors and names.kora_doorlock_links and names.kora_doorlock_categories, true)
 end)
 
 H.report('qbdoorlock property policies')

@@ -33,7 +33,7 @@ continue to emit `qbdoorlock:stateChanged(source, id, locked, usedItem)`.
 ## Install
 
 The test server already starts `kora_doorlock` after `kora_lib`, `kora_sql`, and
-`kora_core`. The database tables (`qbdoorlock_doors`, `qbdoorlock_links`, `qbdoorlock_categories`) are created automatically at startup by kora_sql; there is no SQL to import.
+`kora_core`. The database tables (`kora_doorlock_doors`, `kora_doorlock_links`, `kora_doorlock_categories`) are created automatically at startup by kora_sql; there is no SQL to import.
 
 `kora_target` is optional. If it starts, lockpickable door objects receive a
 kora_lib interaction option. The `pickClosestDoor` client export remains available
@@ -109,7 +109,7 @@ doors placed afterwards. The door ID stays `police-N` whatever the door is renam
 - A door can be moved into or out of a category from its own page (*Category*). This only organises the creator:
   it never changes who can open a door.
 - Deleting a category keeps its doors; they just stop being in a category.
-- Categories are stored in the `qbdoorlock_categories` table (created automatically at start). A door's category is saved in the door itself.
+- Categories are stored in the `kora_doorlock_categories` table (created automatically at start). A door's category is saved in the door itself.
 
 ## Configuration
 

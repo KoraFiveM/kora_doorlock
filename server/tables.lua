@@ -1,7 +1,7 @@
 -- Named tables.lua because shared/schema.lua is the door-definition validator.
 DoorlockTables = {
     {
-        name = 'qbdoorlock_doors',
+        name = 'kora_doorlock_doors',
         collate = 'utf8mb4_unicode_ci',
         columns = {
             { name = 'id', type = 'varchar(64)' },
@@ -11,7 +11,7 @@ DoorlockTables = {
         primary = { 'id' },
     },
     {
-        name = 'qbdoorlock_links',
+        name = 'kora_doorlock_links',
         collate = 'utf8mb4_unicode_ci',
         columns = {
             { name = 'door_id', type = 'varchar(64)' },
@@ -20,7 +20,7 @@ DoorlockTables = {
         primary = { 'door_id' },
     },
     {
-        name = 'qbdoorlock_categories',
+        name = 'kora_doorlock_categories',
         collate = 'utf8mb4_unicode_ci',
         columns = {
             { name = 'id', type = 'varchar(48)' },
