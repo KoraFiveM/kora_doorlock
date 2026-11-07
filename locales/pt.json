@@ -11,6 +11,7 @@
   "lock_resisted": "A fechadura resistiu à sua tentativa.",
   "lockpick_broke": "O seu gazua partiu-se.",
   "access_denied": "Não tem acesso a esta porta.",
+  "incorrect_pin": "PIN incorreto. Tente novamente.",
   "locked": "Porta trancada.",
   "unlocked": "Porta destrancada.",
   "door_saved": "Porta criada.",

@@ -11,6 +11,7 @@
   "lock_resisted": "Zamek oparł się twojej próbie.",
   "lockpick_broke": "Twój wytrych się złamał.",
   "access_denied": "Nie masz dostępu do tych drzwi.",
+  "incorrect_pin": "Nieprawidłowy PIN. Spróbuj ponownie.",
   "locked": "Drzwi zamknięte.",
   "unlocked": "Drzwi otwarte.",
   "door_saved": "Drzwi utworzone.",

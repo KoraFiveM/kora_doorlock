@@ -118,6 +118,12 @@ local function playDoorSound(door, locked)
     local fallback = Config.DefaultSounds and Config.DefaultSounds[locked and 'locked' or 'unlocked']
     local name = locked and door.lockSound or door.unlockSound
     local set = locked and door.lockSoundSet or door.unlockSoundSet
+    if Config.IgnoreVehicleDoorSounds and (name or set) then
+        local bad = not (name and set) -- a half-defined pair would mix with the default's other half
+        for key in pairs(Config.VehicleSoundSets or {}) do if set and key:upper() == set:upper() then bad = true end end
+        for key in pairs(Config.VehicleSoundNames or {}) do if name and key:upper() == name:upper() then bad = true end end
+        if bad then name, set = nil, nil end
+    end
     name, set = name or (fallback and fallback.name), set or (fallback and fallback.set)
     if name and set then Kora.sound.playFromCoords(door.coords, name, set, { range = 20.0, releaseAfter = 3000 }) end
 end

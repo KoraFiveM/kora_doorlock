@@ -11,6 +11,7 @@
   "lock_resisted": "Kilit denemene direndi.",
   "lockpick_broke": "Maymuncuğun kırıldı.",
   "access_denied": "Bu kapıya erişimin yok.",
+  "incorrect_pin": "Yanlış PIN. Lütfen tekrar dene.",
   "locked": "Kapı kilitlendi.",
   "unlocked": "Kapının kilidi açıldı.",
   "door_saved": "Kapı oluşturuldu.",

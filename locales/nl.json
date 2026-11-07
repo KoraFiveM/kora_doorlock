@@ -11,6 +11,7 @@
   "lock_resisted": "Het slot hield jouw poging tegen.",
   "lockpick_broke": "Je dietrich is gebroken.",
   "access_denied": "Je hebt geen toegang tot deze deur.",
+  "incorrect_pin": "Onjuiste pincode. Probeer het opnieuw.",
   "locked": "Deur vergrendeld.",
   "unlocked": "Deur ontgrendeld.",
   "door_saved": "Deur aangemaakt.",

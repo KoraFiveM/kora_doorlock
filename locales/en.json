@@ -11,6 +11,7 @@
   "lock_resisted": "The lock resisted your attempt.",
   "lockpick_broke": "Your lockpick broke.",
   "access_denied": "You do not have access to this door.",
+  "incorrect_pin": "Incorrect PIN. Please try again.",
   "locked": "Door locked.",
   "unlocked": "Door unlocked.",
   "door_saved": "Door created.",

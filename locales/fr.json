@@ -11,6 +11,7 @@
   "lock_resisted": "La serrure a résisté à votre tentative.",
   "lockpick_broke": "Votre crochet s'est cassé.",
   "access_denied": "Vous n'avez pas accès à cette porte.",
+  "incorrect_pin": "PIN incorrect. Veuillez réessayer.",
   "locked": "Porte verrouillée.",
   "unlocked": "Porte déverrouillée.",
   "door_saved": "Porte créée.",

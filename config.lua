@@ -64,9 +64,14 @@ Config.LockpickDifficulty = { 'easy', 'easy', 'medium' }
 Config.LockpickBreakChance = { success = 1, failure = 20 }
 Config.lockpickRateLimit = { max = 4, window = 10000 }
 Config.DefaultSounds = {
-    locked = { name = 'Remote_Control_Close', set = 'PI_Menu_Sounds' },
-    unlocked = { name = 'Remote_Control_Open', set = 'PI_Menu_Sounds' },
+    locked = { name = 'Keycard_Success', set = 'DLC_HEISTS_BIOLAB_FINALE_SOUNDS' },
+    unlocked = { name = 'Keycard_Success', set = 'DLC_HEISTS_BIOLAB_FINALE_SOUNDS' },
 }
+-- Per-door lock/unlock sounds in these sound sets (vehicle key fob chirps) are ignored and the default is used; stored door data is not changed.
+Config.IgnoreVehicleDoorSounds = true
+Config.VehicleSoundSets = { PI_Menu_Sounds = true, Vehicle_Alarm_Sounds = true, ALARMS = true }
+-- Per-door sound names ignored regardless of sound set (case-insensitive), e.g. key fob / alarm sounds.
+Config.VehicleSoundNames = { Remote_Control_Open = true, Remote_Control_Close = true, Remote_Control_Fail = true, Car_Alarm = true }
 
 -- Opens the AppShell management dashboard. This is restricted to players with
 -- the configured kora_lib permission; it is intentionally separate from normal

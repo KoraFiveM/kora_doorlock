@@ -18,7 +18,6 @@ dependencies {
 
 shared_scripts {
     '@kora_lib/init.lua',
-    '@kora_sql/init.lua',
     'types.lua',
     'config.lua',
     'shared/schema.lua',
@@ -31,6 +30,7 @@ client_scripts {
 }
 
 server_scripts {
+    '@kora_sql/init.lua',
     'server/tables.lua',
     'server/main.lua',
 }

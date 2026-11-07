@@ -11,6 +11,7 @@
   "lock_resisted": "La serratura ha resistito al tuo tentativo.",
   "lockpick_broke": "Il tuo grimaldello si è rotto.",
   "access_denied": "Non hai accesso a questa porta.",
+  "incorrect_pin": "PIN errato. Riprova.",
   "locked": "Porta chiusa.",
   "unlocked": "Porta aperta.",
   "door_saved": "Porta creata.",

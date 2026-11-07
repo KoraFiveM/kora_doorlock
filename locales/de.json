@@ -11,6 +11,7 @@
   "lock_resisted": "Das Schloss hat deinem Versuch widerstanden.",
   "lockpick_broke": "Dein Dietrich ist abgebrochen.",
   "access_denied": "Du hast keinen Zugang zu dieser Tür.",
+  "incorrect_pin": "Falsche PIN. Bitte versuche es erneut.",
   "locked": "Tür abgeschlossen.",
   "unlocked": "Tür aufgeschlossen.",
   "door_saved": "Tür erstellt.",

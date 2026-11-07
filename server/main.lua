@@ -165,9 +165,11 @@ local function hasAccess(source, id, door, lockpick, skipLinked)
         end
     end
 
+    local wrongPasscode = false
     if not lockpick and not authorised and door.passcode then
         local supplied = Kora.callback.trigger(source, 'qbdoorlock:client:passcodeRequested', door.label)
         authorised = type(supplied) == 'string' and supplied == door.passcode
+        wrongPasscode = type(supplied) == 'string' and supplied ~= '' and not authorised
     end
     local hookResult = triggerHooks('doorAuthorization', {
         source = source, doorId = id, door = DoorlockSchema.forNetwork(door),
@@ -176,7 +178,7 @@ local function hasAccess(source, id, door, lockpick, skipLinked)
     if hookResult == true then authorised = true end
     if door.policyOwner then
         local policy = doorPolicies[id]
-        if not policy or policy.owner ~= door.policyOwner then return false end
+        if not policy or policy.owner ~= door.policyOwner then return false, nil, nil, wrongPasscode end
         local ok, allowed = pcall(policy.callback, source, id, {
             lockpick = lockpick == true, authorised = authorised == true, door = DoorlockSchema.forNetwork(door),
         })
@@ -185,7 +187,7 @@ local function hasAccess(source, id, door, lockpick, skipLinked)
     local linkedId = not skipLinked and linkedDoors[id]
     local linked = linkedId and getDoor(linkedId)
     if authorised and linked and linked.policyOwner and not hasAccess(source, linkedId, linked, lockpick, true) then return false end
-    return authorised == true, usedRequirement, usedSlot
+    return authorised == true, usedRequirement, usedSlot, wrongPasscode and not authorised
 end
 
 local function clientDefinition(door)
@@ -675,9 +677,9 @@ end, { rateLimit = lockpickRateLimit() })
 Kora.events.register('qbdoorlock:server:doorToggled', function(source, id)
     local door = getDoor(id)
     if not door or not isNearDoor(source, door) then return end
-    local authorised, requirement, slot = hasAccess(source, id, door, false)
+    local authorised, requirement, slot, wrongPasscode = hasAccess(source, id, door, false)
     if not authorised then
-        Kora.notify.send(source, { title = translate('title'), message = translate('access_denied'), type = 'error' })
+        Kora.notify.send(source, { title = translate('title'), message = translate(wrongPasscode and 'incorrect_pin' or 'access_denied'), type = 'error' })
         -- The server state is the truth: put the client's door back to it.
         if states[id] ~= nil then Kora.events.push(source, 'qbdoorlock:client:doorStateChanged', id, states[id], nil) end
         return
