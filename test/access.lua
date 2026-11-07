@@ -84,7 +84,10 @@ local function setup(options)
         lang = function(key) return key end,
         notify = { send = function(_, data) f.notifications[#f.notifications + 1] = data end },
         permissions = { hasPermission = function(_, name) return options.admin == true and name == 'admin' end },
-        distance = { player = function() return options.near ~= false end },
+        distance = {
+            player = function() return options.near ~= false end,
+            playerNearAny = function() return options.near ~= false end,
+        },
         events = {
             register = function(name, handler) f.handlers[name] = handler end,
             push = function(_, name, id, state) f.pushes[#f.pushes + 1] = { name = name, id = id, state = state } end,

@@ -11,6 +11,9 @@ local function setup(trigger)
     env.vector3 = function(x, y, z) return { x = x, y = y, z = z } end
     env.CreateThread = function(fn) f.threads[#f.threads + 1] = fn end
     env.GetCurrentResourceName = function() return 'kora_doorlock' end
+    env.DoorlockSchema = {
+        leaves = function(door) return door.doors or { { model = door.model, coords = door.coords, heading = door.heading } } end,
+    }
     env.Kora = setmetatable({
         lang = function(key, values) return values and values.seconds and (key .. ':' .. values.seconds) or key end,
         notify = { send = function(data) f.notifications[#f.notifications + 1] = data end },

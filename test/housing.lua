@@ -22,11 +22,24 @@ local function setup(stored, linked, rateLimit)
     env.Kora = {
         lang = function(key) return key end,
         permissions = { hasPermission = function() return false end },
+        util = { deepClone = function(value)
+            local seen = {}
+            local function clone(v)
+                if type(v) ~= 'table' then return v end
+                if seen[v] then return seen[v] end
+                local copy = {}
+                seen[v] = copy
+                for k, vv in pairs(v) do copy[clone(k)] = clone(vv) end
+                return copy
+            end
+            return clone(value)
+        end },
         compat = { isCallable = function(value) return type(value) == 'function' end },
         resources = { serverRegistry = function() return { track = function() end, untrack = function() end } end },
         callback = { register = function(name, fn, options) f.callbacks[name] = fn; f.callbackOptions[name] = options end },
         events = { register = function(name, fn) f.actions[name] = fn end, push = function() end },
-        commands = { add = function() end }, distance = { player = function() return true end },
+        commands = { add = function() end },
+        distance = { player = function() return true end, playerNearAny = function() return true end },
         notify = { send = function() end }, timers = { clearTimeout = function() end },
         sql = { ready = function() return true end, ensureTables = function(specs) f.ensured = specs; return {} end, query = function(sql)
             if linked and sql:find('kora_doorlock_links', 1, true) then return { { door_id = 'test', linked_door_id = 'partner' }, { door_id = 'partner', linked_door_id = 'test' } } end

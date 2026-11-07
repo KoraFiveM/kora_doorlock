@@ -23,9 +23,7 @@ local function trigger(name, ...)
     return nil, translate('cannot_pick')
 end
 
-local function doorLeaves(door)
-    return door.doors or { { model = door.model, coords = door.coords, heading = door.heading } }
-end
+local doorLeaves = DoorlockSchema.leaves
 
 local function doorHash(id, index)
     return joaat(('qbdoorlock:%s:%s'):format(id, index))
