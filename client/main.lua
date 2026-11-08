@@ -200,8 +200,9 @@ local function pickDoor(id)
         local animation = Kora.anim.play(playerPed, 'mp_common_heist', 'pick_door', {
             blendInSpeed = 3.0, blendOutSpeed = 1.0, flag = 49,
         })
-        local result = Kora.minigames.play('lockpick', nil, authorization)
-        if animation then Kora.anim.stopHandle(animation, 0) end
+        local ok, result = pcall(Kora.minigames.play, 'lockpick', nil, authorization)
+        if not ok then result = nil end
+        if animation then Kora.anim.stopHandle(animation) end
         Kora.events.trigger('qbdoorlock:server:lockpickFinished', id, authorization, result and result.proof or nil)
         if not result or not result.success then notify(translate('lock_resisted'), 'error') end
         pickingLock = false
