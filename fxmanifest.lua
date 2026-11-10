@@ -6,7 +6,7 @@ name 'kora_doorlock'
 provide 'qb-doorlock'
 author 'qbcore2'
 description 'Config-driven, server-authoritative door locks with an in-game creator, built with kora_lib'
-version '2.1.3'
+version '2.1.4'
 
 dependencies {
     'kora_lib',
