@@ -43,7 +43,7 @@ dofile(resourceDir .. 'shared/schema.lua')
 dofile(resourceDir .. 'client/main.lua')
 
 local function define(id, x, label, locked)
-    pushes['qbdoorlock:client:doorDefinitionUpdated'](id, {
+    pushes['kora_doorlock:client:doorDefinitionUpdated'](id, {
         label = label, model = 1, coords = { x = x, y = 0.0, z = 0.0 }, heading = 0.0, distance = 2.0,
     }, locked)
 end
@@ -82,7 +82,7 @@ harness.test('GetNearbyDoors and GetClosestDoor follow the interaction zones', f
 end)
 
 harness.test('removed doors disappear from the compat views', function()
-    pushes['qbdoorlock:client:doorDefinitionRemoved']('back')
+    pushes['kora_doorlock:client:doorDefinitionRemoved']('back')
     harness.assertEqual(provided.GetDoorStates().back, nil)
     harness.assertEqual(provided.GetDoorList().back, nil)
 end)

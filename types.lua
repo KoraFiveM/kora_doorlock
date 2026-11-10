@@ -1,25 +1,25 @@
----@class QBDoorlockItemRequirement
+---@class KoraDoorlockItemRequirement
 ---@field name string
 ---@field metadata? table|string
 ---@field remove? boolean
 
----@class QBDoorlockLeaf
+---@class KoraDoorlockLeaf
 ---@field model integer
 ---@field coords vector3|{x:number,y:number,z:number}
 ---@field heading? number
 
----@class QBDoorlockDefinition
+---@class KoraDoorlockDefinition
 ---@field label string
 ---@field model? integer
 ---@field coords vector3|{x:number,y:number,z:number}
 ---@field heading? number
----@field doors? QBDoorlockLeaf[]
+---@field doors? KoraDoorlockLeaf[]
 ---@field locked boolean
 ---@field distance number
 ---@field groups? table<string, number>
 ---@field characters? (string|number)[]
 ---@field citizenIds? table<string, boolean>|string[] Legacy alias for characters.
----@field items? (string|QBDoorlockItemRequirement)[]|string
+---@field items? (string|KoraDoorlockItemRequirement)[]|string
 ---@field passcode? string
 ---@field autoLock? integer Milliseconds.
 ---@field automatic? boolean

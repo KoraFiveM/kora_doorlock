@@ -47,4 +47,4 @@ H.test('a rate-limited lockpick start does not raise and the door can be picked 
     assert(f.pickDoor('bank') == true) -- pickingLock was reset
 end)
 
-H.report('qbdoorlock lockpick rate limit')
+H.report('kora_doorlock lockpick rate limit')

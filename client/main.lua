@@ -26,7 +26,7 @@ end
 local doorLeaves = DoorlockSchema.leaves
 
 local function doorHash(id, index)
-    return joaat(('qbdoorlock:%s:%s'):format(id, index))
+    return joaat(('kora_doorlock:%s:%s'):format(id, index))
 end
 
 local function doorDistance(door, position)
@@ -91,7 +91,7 @@ local function clearDoorEntities(door)
         entityDoors[entity] = nil
         if DoesEntityExist(entity) then
             pcall(function()
-                Entity(entity).state:set('qbdoorlock:id', false, false)
+                Entity(entity).state:set('kora_doorlock:id', false, false)
                 Entity(entity).state:set('doorId', false, false)
             end)
         end
@@ -174,7 +174,7 @@ local function getDoorIdFromEntity(entity)
     if type(entity) ~= 'number' or entity == 0 then return nil end
     if entityDoors[entity] then return entityDoors[entity] end
     local ok, state = pcall(function() return Entity(entity).state end)
-    local id = ok and state and (state['qbdoorlock:id'] or state.doorId) or nil
+    local id = ok and state and (state['kora_doorlock:id'] or state.doorId) or nil
     return type(id) == 'string' and id or nil
 end
 
@@ -192,7 +192,7 @@ local function pickDoor(id)
     if not door or not door.lockpick or (not Config.CanPickUnlockedDoors and not door.locked) then return false end
     pickingLock = true
     CreateThread(function()
-        local authorization, err = trigger('qbdoorlock:server:lockpickStarted', id)
+        local authorization, err = trigger('kora_doorlock:server:lockpickStarted', id)
         if not authorization then pickingLock = false; return notify(err or translate('cannot_pick'), 'error') end
         local playerPed = Kora.cache.ped()
         TaskTurnPedToFaceCoord(playerPed, door.coords.x, door.coords.y, door.coords.z, 1000)
@@ -203,7 +203,7 @@ local function pickDoor(id)
         local ok, result = pcall(Kora.minigames.play, 'lockpick', nil, authorization)
         if not ok then result = nil end
         if animation then Kora.anim.stopHandle(animation) end
-        Kora.events.trigger('qbdoorlock:server:lockpickFinished', id, authorization, result and result.proof or nil)
+        Kora.events.trigger('kora_doorlock:server:lockpickFinished', id, authorization, result and result.proof or nil)
         if not result or not result.success then notify(translate('lock_resisted'), 'error') end
         pickingLock = false
     end)
@@ -238,7 +238,7 @@ end
 
 local function setupDoor(id, raw, locked)
     local door, err = DoorlockSchema.normalize(raw, Config.InteractionDistance)
-    if not door then return print(('^3[qbdoorlock]^7 rejected client door %s: %s'):format(tostring(id), err)) end
+    if not door then return print(('^3[kora_doorlock]^7 rejected client door %s: %s'):format(tostring(id), err)) end
     -- Saving details re-sends the definition. Keep the door-system entry when the doors did not move,
     -- instead of removing and re-adding the same hash in one frame.
     local keepSystem = doors[id] ~= nil and sameLeaves(doors[id], door)
@@ -341,19 +341,19 @@ DoorlockClient = {
     end,
 }
 
-Kora.callback.register('qbdoorlock:client:passcodeRequested', function(label)
+Kora.callback.register('kora_doorlock:client:passcodeRequested', function(label)
     local result = Kora.nui.openInputDialog({ { id = 'passcode', label = translate('passcode_label'), type = 'password', required = true, maxLength = 128 } }, label or translate('title'))
     return result and not result.cancelled and result.values and result.values.passcode or nil
 end)
 
-Kora.events.onPush('qbdoorlock:client:doorStateChanged', function(id, locked, source) applyState(id, locked, source, false) end)
-Kora.events.onPush('qbdoorlock:client:doorDefinitionUpdated', function(id, definition, locked) setupDoor(id, definition, locked) end)
-Kora.events.onPush('qbdoorlock:client:doorDefinitionRemoved', removeDoor)
-Kora.events.onPush('qbdoorlock:client:teleported', function(coords) Kora.teleport.player(coords) end)
+Kora.events.onPush('kora_doorlock:client:doorStateChanged', function(id, locked, source) applyState(id, locked, source, false) end)
+Kora.events.onPush('kora_doorlock:client:doorDefinitionUpdated', function(id, definition, locked) setupDoor(id, definition, locked) end)
+Kora.events.onPush('kora_doorlock:client:doorDefinitionRemoved', removeDoor)
+Kora.events.onPush('kora_doorlock:client:teleported', function(coords) Kora.teleport.player(coords) end)
 
 toggleBinding = Kora.keybind.add({
-    name = 'qbdoorlock_toggle', description = translate('keybind_toggle'), defaultKey = 'E', defaultMapper = 'keyboard',
-    onPressed = function() if nearbyDoor then Kora.events.trigger('qbdoorlock:server:doorToggled', nearbyDoor) end end,
+    name = 'kora_doorlock_toggle', description = translate('keybind_toggle'), defaultKey = 'E', defaultMapper = 'keyboard',
+    onPressed = function() if nearbyDoor then Kora.events.trigger('kora_doorlock:server:doorToggled', nearbyDoor) end end,
 })
 
 CreateThread(function()
@@ -363,7 +363,7 @@ CreateThread(function()
             if sprite.dict and Kora.stream.loadTextureDict(sprite.dict) then spriteDicts[sprite.dict] = true end
         end
     end
-    local definitions, serverStates = trigger('qbdoorlock:server:doorsRequested')
+    local definitions, serverStates = trigger('kora_doorlock:server:doorsRequested')
     if type(definitions) ~= 'table' then return notify(translate('definitions_failed'), 'error') end
     for id, definition in pairs(definitions) do setupDoor(id, definition, type(serverStates) == 'table' and serverStates[id] == true) end
 end)
@@ -415,7 +415,7 @@ CreateThread(function()
                         if entity then
                             door.entities[index], entityDoors[entity] = entity, id
                             pcall(function()
-                                Entity(entity).state:set('qbdoorlock:id', id, false)
+                                Entity(entity).state:set('kora_doorlock:id', id, false)
                                 Entity(entity).state:set('doorId', id, false)
                             end)
                         end
@@ -440,7 +440,7 @@ end)
 ---@return string? id
 exports('getClosestDoorId', function() return nearbyDoor end)
 
----@return QBDoorlockDefinition? door
+---@return KoraDoorlockDefinition? door
 exports('getClosestDoor', function() return nearbyDoor and doors[nearbyDoor] or nil end)
 
 ---@param entity integer
@@ -450,7 +450,7 @@ exports('getDoorIdFromEntity', getDoorIdFromEntity)
 ---@return boolean used
 exports('useClosestDoor', function()
     if not nearbyDoor then return false end
-    Kora.events.trigger('qbdoorlock:server:doorToggled', nearbyDoor)
+    Kora.events.trigger('kora_doorlock:server:doorToggled', nearbyDoor)
     return true
 end)
 

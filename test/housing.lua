@@ -56,7 +56,7 @@ local function setup(stored, linked, rateLimit)
     assert(loadfile('server/tables.lua', 't', env))()
     assert(loadfile('server/main.lua', 't', env))()
     f.threads[1]()
-    function f.toggle() f.actions['qbdoorlock:server:doorToggled'](1, 'test') end
+    function f.toggle() f.actions['kora_doorlock:server:doorToggled'](1, 'test') end
     return f
 end
 
@@ -138,9 +138,9 @@ end)
 
 H.test('lockpick callback uses Config.lockpickRateLimit and falls back to the original limit', function()
     local configured = setup(nil, nil, { max = 9, window = 3000 })
-    local options = configured.callbackOptions['qbdoorlock:server:lockpickStarted']
+    local options = configured.callbackOptions['kora_doorlock:server:lockpickStarted']
     H.assertEqual(options.rateLimit.max, 9); H.assertEqual(options.rateLimit.window, 3000)
-    local fallback = setup().callbackOptions['qbdoorlock:server:lockpickStarted']
+    local fallback = setup().callbackOptions['kora_doorlock:server:lockpickStarted']
     H.assertEqual(fallback.rateLimit.max, 4); H.assertEqual(fallback.rateLimit.window, 10000)
 end)
 
@@ -152,4 +152,4 @@ H.test('the startup thread ensures the declared tables before loading doors', fu
     H.assertEqual(names.kora_doorlock_doors and names.kora_doorlock_links and names.kora_doorlock_categories, true)
 end)
 
-H.report('qbdoorlock property policies')
+H.report('kora_doorlock property policies')

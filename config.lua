@@ -77,7 +77,7 @@ Config.VehicleSoundNames = { Remote_Control_Open = true, Remote_Control_Close = 
 -- the configured kora_lib permission; it is intentionally separate from normal
 -- door access rules so staff can recover or manage any configured door.
 Config.AdminPermission = 'admin'
-Config.AdminPermissionPrefix = 'qbcore'
+Config.AdminPermissionPrefix = 'kora_core'
 Config.AdminCommand = 'doorlocks'
 Config.CreateCommand = 'adddoor'
 Config.ImportCommand = 'importoxdoors'
@@ -86,7 +86,7 @@ Config.ImportCommand = 'importoxdoors'
 if Kora and Kora.config and Kora.config.adopt then
     Config.Doors = Kora.config.map(Config.Doors, Kora.config.object({}), {
         label = 'Authored doors',
-        description = 'Defines permanent door IDs and their authored access, model, coordinate, lock, sound, and optional auto-lock settings. Each row key is the stable door ID and each value is a JSON object. In-game database edits override these defaults; verify model hashes and coordinates before restarting qbdoorlock.',
+        description = 'Defines permanent door IDs and their authored access, model, coordinate, lock, sound, and optional auto-lock settings. Each row key is the stable door ID and each value is a JSON object. In-game database edits override these defaults; verify model hashes and coordinates before restarting kora_doorlock.',
     })
     Config.DefaultAutoLock = Kora.config.optional(Config.DefaultAutoLock,
         Kora.config.integer(0, { min = 0 }), {

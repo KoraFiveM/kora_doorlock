@@ -34,7 +34,6 @@ local function setup(config)
         zones = { point = function() return { remove = function() end } end },
         keybind = { add = function() return { disable = function() end } end },
     }, { __index = function() return setmetatable({}, { __index = function() return function() end end }) end })
-    env.QB = env.Kora -- the committed sources use the QB alias, the working tree uses Kora
     local file = assert(io.open('client/main.lua')); local source = file:read('a'); file:close()
     local chunk = assert(load(source .. '\nreturn setupDoor, iconCoords, doors', '@client/main.lua', 't', env))
     f.setupDoor, f.iconCoords, f.doors = chunk()
@@ -54,7 +53,7 @@ H.test('a re-sent definition for an unmoved door keeps its door-system entry', f
     H.assertEqual(table.concat(f.calls, ','), 'add')
     f.setupDoor('fleeca', single, true) -- saving Details with an auto-lock
     H.assertEqual(table.concat(f.calls, ','), 'add', 'no remove/re-add of the same hash')
-    H.assertEqual(f.doorState['qbdoorlock:fleeca:1'], 1)
+    H.assertEqual(f.doorState['kora_doorlock:fleeca:1'], 1)
 end)
 
 H.test('a moved door is re-registered', function()
@@ -69,18 +68,18 @@ end)
 H.test('the lock state is re-asserted until the door system holds it', function()
     local f = setup()
     f.setupDoor('fleeca', single, true)
-    f.doorState['qbdoorlock:fleeca:1'] = 0 -- the system dropped the lock
+    f.doorState['kora_doorlock:fleeca:1'] = 0 -- the system dropped the lock
     f.runThreads()
-    H.assertEqual(f.doorState['qbdoorlock:fleeca:1'], 1)
+    H.assertEqual(f.doorState['kora_doorlock:fleeca:1'], 1)
 end)
 
 H.test('a door the system lost is added back while enforcing', function()
     local f = setup()
     f.setupDoor('fleeca', single, true)
-    f.registered['qbdoorlock:fleeca:1'] = nil
+    f.registered['kora_doorlock:fleeca:1'] = nil
     f.runThreads()
-    H.assertTrue(f.registered['qbdoorlock:fleeca:1'])
-    H.assertEqual(f.doorState['qbdoorlock:fleeca:1'], 1)
+    H.assertTrue(f.registered['kora_doorlock:fleeca:1'])
+    H.assertEqual(f.doorState['kora_doorlock:fleeca:1'], 1)
 end)
 
 H.test('an older enforcement loop stops when a newer state arrives', function()
@@ -88,7 +87,7 @@ H.test('an older enforcement loop stops when a newer state arrives', function()
     f.setupDoor('fleeca', single, true)
     f.setupDoor('fleeca', single, false) -- unlocked afterwards
     f.runThreads()
-    H.assertEqual(f.doorState['qbdoorlock:fleeca:1'], 0)
+    H.assertEqual(f.doorState['kora_doorlock:fleeca:1'], 0)
 end)
 
 H.test('the lock icon sits at the middle of a single door, not its hinge', function()

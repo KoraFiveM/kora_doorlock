@@ -4,7 +4,7 @@
 -- doors in bulk as category-1, category-2 ... Each door keeps its own copy, so it can still be changed alone.
 -- The door runtime lives in client/main.lua and is reached through DoorlockClient.
 
-local APP_ID = 'qbdoorlock:creator'
+local APP_ID = 'kora_doorlock:creator'
 
 -- All player-facing text comes from locales/*.json through the door runtime (client/main.lua).
 local function T(key, replacements)
@@ -666,9 +666,9 @@ local function edit(door, mutate, message)
 
     local result, err
     if door.isCategory then
-        result, err = change('qbdoorlock:server:managementCategoryDefaultsSaved', door.id, definition)
+        result, err = change('kora_doorlock:server:managementCategoryDefaultsSaved', door.id, definition)
     else
-        result, err = change('qbdoorlock:server:managementDoorSaved', door.id, definition, false)
+        result, err = change('kora_doorlock:server:managementDoorSaved', door.id, definition, false)
     end
     if not result then return fail(err or T('save_failed')) end
     return refresh(notice(message or T('saved')))
@@ -810,7 +810,7 @@ local function placeCategoryDoors(categoryId)
 
             local geometry, cancelledAt = captureGeometry(double, hint, true)
             if geometry then
-                local result, err = DoorlockClient.trigger('qbdoorlock:server:managementCategoryDoorCreated', categoryId, geometry)
+                local result, err = DoorlockClient.trigger('kora_doorlock:server:managementCategoryDoorCreated', categoryId, geometry)
                 if result then
                     setData(result.snapshot)
                     revision = revision + 1
@@ -853,7 +853,7 @@ local function runTool(tool)
 
         local definition = copyValue(door.definition)
         applyGeometry(definition, geometry)
-        local result, err = change('qbdoorlock:server:managementDoorSaved', door.id, definition, false)
+        local result, err = change('kora_doorlock:server:managementDoorSaved', door.id, definition, false)
         if not result then return toast(err or T('creator_no_answer')) end
         return DoorlockClient.notify(DoorlockClient.translate('door_retargeted'), 'success')
     end
@@ -863,7 +863,7 @@ local function runTool(tool)
     definition.label = tool.name
     applyGeometry(definition, geometry)
 
-    local result, err = DoorlockClient.trigger('qbdoorlock:server:managementDoorCreated', definition, tool.sourceDoorId)
+    local result, err = DoorlockClient.trigger('kora_doorlock:server:managementDoorCreated', definition, tool.sourceDoorId)
     if not result then return toast(err or T('creator_no_answer')) end
 
     setData(result.doors)
@@ -971,7 +971,7 @@ local function doorAction(actionId, values, target)
     end
 
     if actionId == 'door:refresh' then
-        local result, err = change('qbdoorlock:server:managementSnapshotRequested')
+        local result, err = change('kora_doorlock:server:managementSnapshotRequested')
         if not result then return fail(err or T('refresh_failed')) end
         return refresh(notice(T('refreshed')))
     end
@@ -991,13 +991,13 @@ local function doorAction(actionId, values, target)
     if not door then return fail(T('pick_door_first')) end
 
     if actionId == 'door:toggle' then
-        local result, err = change('qbdoorlock:server:managementStateSet', door.id, not door.locked)
+        local result, err = change('kora_doorlock:server:managementStateSet', door.id, not door.locked)
         if not result then return fail(err or T('change_failed')) end
         return refresh(notice(door.locked and T('unlocked') or T('locked')))
     end
 
     if actionId == 'door:teleport' then
-        Kora.events.trigger('qbdoorlock:server:teleportRequested', door.id)
+        Kora.events.trigger('kora_doorlock:server:teleportRequested', door.id)
         return { close = true }
     end
 
@@ -1042,13 +1042,13 @@ local function doorAction(actionId, values, target)
     if actionId == 'door:link' then
         local linkedId = values.linkedDoorId
         if type(linkedId) ~= 'string' or linkedId == '' then return fail(T('pick_link_door')) end
-        local result, err = change('qbdoorlock:server:managementDoorsLinked', door.id, linkedId)
+        local result, err = change('kora_doorlock:server:managementDoorsLinked', door.id, linkedId)
         if not result then return fail(err or T('link_failed')) end
         return refresh(notice(T('doors_linked')))
     end
 
     if actionId == 'door:unlink' then
-        local result, err = change('qbdoorlock:server:managementDoorsUnlinked', door.id)
+        local result, err = change('kora_doorlock:server:managementDoorsUnlinked', door.id)
         if not result then return fail(err or T('unlink_failed')) end
         return refresh(notice(T('doors_unlinked')))
     end
@@ -1064,7 +1064,7 @@ local function doorAction(actionId, values, target)
         if not confirmed(T('delete_door_title'), T('delete_door_body', { name = door.label })) then
             return refresh()
         end
-        local result, err = change('qbdoorlock:server:managementDoorDeleted', door.id)
+        local result, err = change('kora_doorlock:server:managementDoorDeleted', door.id)
         if not result then return fail(err or T('delete_failed')) end
         selectedDoor, currentView = nil, 'doors'
         return refresh(notice(T('door_deleted')))
@@ -1092,7 +1092,7 @@ local function categoryAction(actionId, values)
     if actionId == 'cat:new' then
         local name = askCategoryName()
         if not name then return refresh() end
-        local result, err = DoorlockClient.trigger('qbdoorlock:server:managementCategoryCreated', name)
+        local result, err = DoorlockClient.trigger('kora_doorlock:server:managementCategoryCreated', name)
         if not result then return fail(err or T('creator_no_answer')) end
         setData(result.snapshot)
         return openCategory(result.id, notice(T('category_created')))
@@ -1113,7 +1113,7 @@ local function categoryAction(actionId, values)
     end
 
     if actionId == 'cat:rename' then
-        local result, err = change('qbdoorlock:server:managementCategoryRenamed', category.id, text(values.label))
+        local result, err = change('kora_doorlock:server:managementCategoryRenamed', category.id, text(values.label))
         if not result then return fail(err or T('rename_failed')) end
         return refresh(notice(T('saved')))
     end
@@ -1122,7 +1122,7 @@ local function categoryAction(actionId, values)
         if not confirmed(T('delete_category_title'), T('delete_category_body', { name = category.label })) then
             return refresh()
         end
-        local result, err = change('qbdoorlock:server:managementCategoryDeleted', category.id)
+        local result, err = change('kora_doorlock:server:managementCategoryDeleted', category.id)
         if not result then return fail(err or T('delete_category_failed')) end
         selectedCategory, currentView = nil, 'categories'
         return refresh(notice(T('category_deleted')))
@@ -1168,7 +1168,7 @@ Kora.nui.registerApp({
 ---@param options? { closestFirst?: boolean, create?: boolean }
 local function open(options)
     options = options or {}
-    local result, err = DoorlockClient.trigger('qbdoorlock:server:managementSnapshotRequested')
+    local result, err = DoorlockClient.trigger('kora_doorlock:server:managementSnapshotRequested')
     if not result then
         toast(err or T('admin_required'))
         return
@@ -1196,10 +1196,10 @@ local function open(options)
     end
 end
 
-Kora.events.onPush('qbdoorlock:client:managementOpened', function(closest)
+Kora.events.onPush('kora_doorlock:client:managementOpened', function(closest)
     CreateThread(function() open({ closestFirst = closest == true }) end)
 end)
 
-Kora.events.onPush('qbdoorlock:client:targetedCreationRequested', function()
+Kora.events.onPush('kora_doorlock:client:targetedCreationRequested', function()
     CreateThread(function() open({ create = true }) end)
 end)

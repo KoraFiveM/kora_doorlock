@@ -155,7 +155,7 @@ end
 
 ---@param raw table
 ---@param fallbackDistance? number
----@return QBDoorlockDefinition? definition
+---@return KoraDoorlockDefinition? definition
 ---@return string? error
 function DoorlockSchema.normalize(raw, fallbackDistance)
     if type(raw) ~= 'table' then return nil, 'Door definition must be a table.' end

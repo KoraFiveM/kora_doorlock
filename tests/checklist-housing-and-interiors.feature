@@ -158,7 +158,7 @@ Feature: kora_doorlock — Housing & Interiors
     Checklist test: As admin run /doorlocks (or /doorlocks closest): searchable door grid, Closest to me sort, Refresh, per-door pages.
     """
     When I run the command "/doorlocks"
-    Then the "qbdoorlock:creator" app opens
+    Then the "kora_doorlock:creator" app opens
     And I confirm: a searchable door grid is shown
     When I manually: use the Closest to me sort
     Then I confirm: doors are sorted with the closest one first
@@ -168,7 +168,7 @@ Feature: kora_doorlock — Housing & Interiors
     Then I confirm: the per-door page opens
     When I manually: close the creator
     And I run the command "/doorlocks closest"
-    Then the "qbdoorlock:creator" app opens
+    Then the "kora_doorlock:creator" app opens
 
   @kora_doorlock @checklist @checklist:kora_doorlock:create-door @cat:housing-and-interiors @needs:admin
   Scenario: Create a door with /adddoor

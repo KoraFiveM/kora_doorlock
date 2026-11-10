@@ -28,7 +28,7 @@ locks affected doors, and restored doors remain locked until re-registration.
 `ReleaseDoorPolicy(id)` explicitly and durably unlinks the owner's policy,
 restoring the door's legacy permissions without deleting the door. Both return
 `true` or `false, error` and reject other providers. Confirmed state changes
-continue to emit `qbdoorlock:stateChanged(source, id, locked, usedItem)`.
+continue to emit `kora_doorlock:stateChanged(source, id, locked, usedItem)`.
 
 ## Install
 
@@ -42,7 +42,7 @@ without a target resource.
 ## Door creator
 
 Players with the permission selected by `Config.AdminPermission` and
-`Config.AdminPermissionPrefix` (`qbcore.admin` by default) can use:
+`Config.AdminPermissionPrefix` (`kora_core.admin` by default) can use:
 
 - `/doorlocks` (or `/doorlocks closest`) to open the creator. It works like the
   kora_crafting creator: a grid of doors you can search, a *Create new door* button
@@ -229,7 +229,7 @@ add_ace identifier.license:abc123 "doorlock.city-hall-office" allow
 When `Config.PlayerAceAuthorised` is enabled, the permission configured by
 `Config.PlayerAcePermission` (default `command.doorlock`) can use every door.
 Administrative editing remains restricted to the separately configured
-administrative permission (`qbcore.admin` by default).
+administrative permission (`kora_core.admin` by default).
 
 ## APIs
 
@@ -261,17 +261,17 @@ local imported, skipped = exports.kora_doorlock:importOxDoors()
 The local server event form is also available:
 
 ```lua
-TriggerEvent('qbdoorlock:setState', 'city-hall-office', 0)
+TriggerEvent('kora_doorlock:setState', 'city-hall-office', 0)
 ```
 
 Listen for successful changes:
 
 ```lua
-AddEventHandler('qbdoorlock:stateChanged', function(source, doorId, locked, usedItem)
+AddEventHandler('kora_doorlock:stateChanged', function(source, doorId, locked, usedItem)
     -- source is nil for server/auto-lock changes.
 end)
 
-AddEventHandler('qbdoorlock:loaded', function()
+AddEventHandler('kora_doorlock:loaded', function()
     -- Persistent definitions and links are ready.
 end)
 ```

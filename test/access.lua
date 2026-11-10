@@ -98,11 +98,10 @@ local function setup(options)
         resources = { serverRegistry = function() return { track = function() end, untrack = function() end } end },
         compat = { isCallable = function() return true end },
     }, { __index = function() return setmetatable({}, { __index = function() return function() end end }) end })
-    env.QB = env.Kora -- the committed sources use the QB alias, the working tree uses Kora
     local file = assert(io.open('server/main.lua')); local source = file:read('a'); file:close()
     local chunk = assert(load(source .. '\nreturn states', '@server/main.lua', 't', env))
     f.states = chunk()
-    function f.toggle() f.handlers['qbdoorlock:server:doorToggled'](7, 'bank') end
+    function f.toggle() f.handlers['kora_doorlock:server:doorToggled'](7, 'bank') end
     return f
 end
 
@@ -192,7 +191,7 @@ H.test('server: a refused toggle re-sends the real door state to the player', fu
     local f = setup({ player = civilian })
     f.toggle()
     local last = f.pushes[#f.pushes]
-    H.assertEqual(last.name, 'qbdoorlock:client:doorStateChanged')
+    H.assertEqual(last.name, 'kora_doorlock:client:doorStateChanged')
     H.assertEqual(last.state, true)
 end)
 
