@@ -308,3 +308,5 @@ admin/creator menu always shows the internal door name.
 ## qb-doorlock compatibility
 
 The resource provides `qb-doorlock`. Client exports `GetDoorStates` (`{[id]=locked}`), `GetDoorList` (`{[id]=door}` with `doorLabel`/`textCoords` added), `GetNearbyDoors` (`{[id]=true}`) and `GetClosestDoor` (`{id, distance, data}`, `{}` when none) mirror the stock shapes. Door ids are Kora's string ids, not stock numeric indexes. `qb-doorlock:server:updateState` and `lockpicks:UseLockpick` are not handled here.
+
+Full documentation: see [docs/](docs/index.md).
