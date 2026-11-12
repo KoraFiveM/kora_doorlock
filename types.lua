@@ -1,0 +1,36 @@
+---@class KoraDoorlockItemRequirement
+---@field name string
+---@field metadata? table|string
+---@field remove? boolean
+
+---@class KoraDoorlockLeaf
+---@field model integer
+---@field coords vector3|{x:number,y:number,z:number}
+---@field heading? number
+
+---@class KoraDoorlockDefinition
+---@field label string
+---@field model? integer
+---@field coords vector3|{x:number,y:number,z:number}
+---@field heading? number
+---@field doors? KoraDoorlockLeaf[]
+---@field locked boolean
+---@field distance number
+---@field groups? table<string, number>
+---@field characters? (string|number)[]
+---@field citizenIds? table<string, boolean>|string[] Legacy alias for characters.
+---@field items? (string|KoraDoorlockItemRequirement)[]|string
+---@field passcode? string
+---@field autoLock? integer Milliseconds.
+---@field automatic? boolean
+---@field doorRate? number
+---@field holdOpen? boolean
+---@field hideUi? boolean
+---@field category? string ID of the creator category the door was made in (organisation only).
+---@field lockpick? boolean
+---@field lockpickDifficulty? table|string
+---@field lockSound? string
+---@field lockSoundSet? string
+---@field unlockSound? string
+---@field unlockSoundSet? string
+
