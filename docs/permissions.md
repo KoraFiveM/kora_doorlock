@@ -1,6 +1,6 @@
 ---
 title: Access and permissions
-sidebar_position: 5
+sidebar_position: 8
 ---
 
 # Access and permissions
@@ -62,4 +62,4 @@ A server resource can attach an authoritative policy to a door ID with `Register
 - `ReleaseDoorPolicy` durably removes the ownership, restoring the door's normal permissions.
 - Other resources cannot change a policy they do not own.
 
-See [Exports](./exports.md) for the signatures.
+See the [API reference](./api/server.md) for the signatures.

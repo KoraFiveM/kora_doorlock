@@ -1,6 +1,6 @@
 ---
 title: Events
-sidebar_position: 9
+sidebar_position: 10
 ---
 
 # Events
@@ -41,4 +41,4 @@ end)
 | `kora_doorlock:client:passcodeRequested` | server to client | Asks the player for the passcode. |
 | `kora_doorlock:server:management...` | client to server | Admin-only creator operations: `SnapshotRequested`, `StateSet`, `DoorSaved`, `DoorCreated`, `DoorDeleted`, `DoorsLinked`, `DoorsUnlinked`, `CategoryCreated`, `CategoryRenamed`, `CategoryDefaultsSaved`, `CategoryDeleted`, `CategoryDoorCreated`. All check the admin permission and are rate limited. |
 
-These internals are used by the creator and may change; use [Exports](./exports.md) from other resources.
+These internals are used by the creator and may change; use the [API reference](./api/index.md) from other resources.

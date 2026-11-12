@@ -11,15 +11,18 @@ Current version: see `version` in `fxmanifest.lua`.
 
 Every toggle is decided on the server. The client only sends a request and shows the result. Lock state is runtime state; door definitions persist.
 
-## Pages
+## Documentation map
 
-- [Installation](./installation.md) - dependencies, start order, database setup
+- [Installation](./installation.md) - install steps, manifest, `Config.Doors`, legacy compatibility, config summary, dependencies, startup behaviour
+- [How to use](./how-to-use.md) - every access check, lockpicking flow, creator and management UI
+- [Commands](./commands.md) - `/doorlocks`, `/adddoor`, `/importoxdoors` with arguments, access and results, plus the keybind
+- [API reference](./api/index.md) - overview of the server and client exports
+  - [Server exports and hooks](./api/server.md) - door accessors, `editDoor`/`createDoor`/`removeDoor`, hooks and door policies
+  - [Client exports](./api/client.md) - local door state, closest-door helpers, toggle and lockpick actions
 - [Configuration](./configuration.md) - every `Config` option
 - [Door definitions](./doors.md) - the fields of a door, limits and ox-style aliases
 - [Access and permissions](./permissions.md) - how access is decided, ACEs, admin permission, hooks, policies
 - [Door creator](./creator.md) - `/doorlocks`, creating, editing and categories
-- [Commands](./commands.md) - chat commands and the keybind
-- [Exports](./exports.md) - client and server exports
 - [Events](./events.md) - local events, net events and callbacks
 - [Database](./database.md) - tables and how overrides and deletions are stored
 - [Compatibility](./compatibility.md) - `qb-doorlock` and `ox_doorlock` parity
