@@ -1,6 +1,6 @@
 ---
 title: Compatibility
-sidebar_position: 11
+sidebar_position: 12
 ---
 
 # Compatibility
@@ -20,4 +20,4 @@ Door IDs are Kora string IDs, not the numeric indexes of stock qb-doorlock. The 
 
 ## ox_doorlock
 
-Doors can be imported with `/importoxdoors`, and the aliases listed in [Door definitions](./doors.md) are accepted. The server exports `getDoor`, `getDoorFromName`, `getAllDoors`, `setDoorState`, `editDoor`, `createDoor`, `removeDoor` and `registerHook` follow the ox shape. See [Exports](./exports.md).
+Doors can be imported with `/importoxdoors`, and the aliases listed in [Door definitions](./doors.md) are accepted. The server exports `getDoor`, `getDoorFromName`, `getAllDoors`, `setDoorState`, `editDoor`, `createDoor`, `removeDoor` and `registerHook` follow the ox shape. See the [API reference](./api/index.md).

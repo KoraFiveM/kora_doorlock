@@ -1,6 +1,6 @@
 ---
 title: Door definitions
-sidebar_position: 4
+sidebar_position: 7
 ---
 
 # Door definitions
