@@ -1,0 +1,55 @@
+{
+  "resource": "kora_doorlock",
+  "standardsRevision": "2026-11-12.2",
+  "realms": {
+    "client": [
+      "client/creator.lua",
+      "client/main.lua"
+    ],
+    "server": [
+      "server/main.lua",
+      "server/tables.lua"
+    ],
+    "shared": [
+      "config.lua",
+      "shared/access.lua",
+      "shared/schema.lua",
+      "types.lua"
+    ],
+    "manifest": [
+      "fxmanifest.lua"
+    ],
+    "test": [
+      "test/access.lua",
+      "test/doorstate.lua",
+      "test/harness.lua",
+      "test/housing.lua",
+      "test/locales.lua",
+      "test/ratelimit.lua",
+      "test/smoke/compat.lua"
+    ]
+  },
+  "exclude": [
+    ".git/*",
+    ".github/*",
+    ".standards/*",
+    "node_modules/*",
+    "**/node_modules/*",
+    "vendor/*",
+    "**/vendor/*",
+    "web/*",
+    "ui/*",
+    "html/*",
+    "dist/*",
+    "artifacts/*",
+    "runtime/*",
+    "txData/*",
+    "storage/*",
+    "stream/*",
+    "docs/*",
+    "__pycache__/*",
+    "modules/lookup/data/*"
+  ],
+  "project": "Kora Framework",
+  "copyright": "Copyright © 2026 Kora Framework"
+}
