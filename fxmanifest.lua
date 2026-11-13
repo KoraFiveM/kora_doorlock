@@ -6,7 +6,7 @@ name 'kora_doorlock'
 provide 'qb-doorlock'
 author 'qbcore2'
 description 'Config-driven, server-authoritative door locks with an in-game creator, built with kora_lib'
-version '0.2.1'
+version '0.1.0'
 
 dependencies {
     'kora_lib',
@@ -34,7 +34,7 @@ server_scripts {
 }
 
 files {
-    'locales/*.json',
+    'locales/*.lua',
 }
 
 -- kora_qa: Gherkin test scenarios (converted legacy tests), see [kora]/kora_qa/README.md
