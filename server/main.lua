@@ -248,7 +248,7 @@ setDoorState = function(id, locked, source, usedItem)
     local linkedId = linkedDoors[id]
     if linkedId and getDoor(linkedId) and states[linkedId] ~= locked then applyOneState(linkedId, locked, source, usedItem) end
     if source and source > 0 and Config.Notify then
-        Kora.notify.send(source, { title = translate('title'), message = translate(locked and 'locked' or 'unlocked'), type = 'success' })
+        Kora.bridge.sendNotify(source, { title = translate('title'), message = translate(locked and 'locked' or 'unlocked'), type = 'success' })
     end
     return true
 end
@@ -672,7 +672,7 @@ Kora.events.register('kora_doorlock:server:doorToggled', function(source, id)
     if not door or not isNearDoor(source, door) then return end
     local authorised, requirement, slot, wrongPasscode = hasAccess(source, id, door, false)
     if not authorised then
-        Kora.notify.send(source, { title = translate('title'), message = translate(wrongPasscode and 'incorrect_pin' or 'access_denied'), type = 'error' })
+        Kora.bridge.sendNotify(source, { title = translate('title'), message = translate(wrongPasscode and 'incorrect_pin' or 'access_denied'), type = 'error' })
         -- The server state is the truth: put the client's door back to it.
         if states[id] ~= nil then Kora.events.push(source, 'kora_doorlock:client:doorStateChanged', id, states[id], nil) end
         return
@@ -699,7 +699,7 @@ Kora.events.register('kora_doorlock:server:lockpickFinished', function(source, i
     local chances = Config.LockpickBreakChance or {}
     local chance = tonumber(successful and chances.success or chances.failure) or 0
     if chance > 0 and math.random(100) <= chance and removeItem(source, pending.requirement, pending.slot) then
-        Kora.notify.send(source, { title = translate('title'), message = translate('lockpick_broke'), type = 'error' })
+        Kora.bridge.sendNotify(source, { title = translate('title'), message = translate('lockpick_broke'), type = 'error' })
     end
 end, { rateLimit = { max = 5, window = 10000 } })
 
@@ -755,10 +755,10 @@ end
 Kora.commands.add(Config.ImportCommand or 'importoxdoors', translate('import_help'), nil, false, function(source)
     local imported, err = importOxDoors()
     if imported == nil then
-        Kora.notify.send(source, { title = translate('title'), message = translate('import_failed', { error = err }), type = 'error' })
+        Kora.bridge.sendNotify(source, { title = translate('title'), message = translate('import_failed', { error = err }), type = 'error' })
         return
     end
-    Kora.notify.send(source, { title = translate('title'), message = translate('imported', { count = imported }), type = 'success' })
+    Kora.bridge.sendNotify(source, { title = translate('title'), message = translate('imported', { count = imported }), type = 'success' })
 end, { permission = Config.AdminPermission or 'admin', checkPermission = commandPermission })
 
 ---@param id string

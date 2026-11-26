@@ -10,7 +10,7 @@ local function translate(key, replacements)
 end
 
 local function notify(message, notificationType)
-    Kora.notify.send({ title = translate('title'), message = message, type = notificationType or 'info' })
+    Kora.bridge.sendNotify({ title = translate('title'), message = message, type = notificationType or 'info' })
 end
 
 -- kora_lib re-raises a rate-limited callback as a script error. Callers here treat it as a

@@ -34,7 +34,7 @@ local function optionalText(value)
 end
 
 local function toast(message)
-    Kora.notify.send({ title = T('creator_title'), message = message, type = 'error' })
+    Kora.bridge.sendNotify({ title = T('creator_title'), message = message, type = 'error' })
 end
 
 local function confirmed(title, message)
