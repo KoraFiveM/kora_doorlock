@@ -74,15 +74,15 @@ local function iconCoords(door)
 end
 
 local function hidePrompt()
-    if prompt then Kora.textui.hide(prompt); prompt = nil end
+    if prompt then Kora.bridge.hideText(prompt); prompt = nil end
 end
 
 local function updatePrompt()
     local door = nearbyDoor and doors[nearbyDoor]
     if not door or door.hideUi or not Config.DrawTextUI then return hidePrompt() end
     local options = { key = 'E', icon = door.locked and 'Lock' or 'Unlock', position = 'right-center' }
-    if prompt then Kora.textui.update(prompt, stateText(door), options)
-    else prompt = Kora.textui.show(stateText(door), options) end
+    if prompt then Kora.bridge.updateText(prompt, stateText(door), options)
+    else prompt = Kora.bridge.drawText(stateText(door), options) end
 end
 
 local function clearDoorEntities(door)
@@ -287,7 +287,7 @@ local function releaseSelection(state)
     if activeSelection == state then activeSelection = nil end
     if state.highlighted and DoesEntityExist(state.highlighted) then SetEntityDrawOutline(state.highlighted, false) end
     state.highlighted = nil
-    if state.hint then pcall(Kora.textui.hide, state.hint) end
+    if state.hint then pcall(Kora.bridge.hideText, state.hint) end
     toggleBinding.disable(false)
 end
 
@@ -300,7 +300,7 @@ local function selectLeaf(first, promptKey, hintText)
     local state = {}
     activeSelection = state
     toggleBinding.disable(true)
-    state.hint = Kora.textui.show(('%s  ·  %s'):format(hintText or translate(promptKey or 'select_second'), translate('select_controls')),
+    state.hint = Kora.bridge.drawText(('%s  ·  %s'):format(hintText or translate(promptKey or 'select_second'), translate('select_controls')),
         { icon = 'DoorOpen' })
 
     local ok, result = pcall(function()
